@@ -306,14 +306,14 @@ class TestModelSerialization:
             preferred_name_a="TP53",
             preferred_name_b="MDM2",
             ncbi_taxon_id=9606,
-            score=999,
-            nscore=0,
-            fscore=0,
-            pscore=0,
-            ascore=203,
-            escore=938,
-            dscore=999,
-            tscore=995,
+            score=0.999,
+            nscore=0.0,
+            fscore=0.0,
+            pscore=0.0,
+            ascore=0.203,
+            escore=0.938,
+            dscore=0.999,
+            tscore=0.995,
         )
 
         # Convert to JSON and back
