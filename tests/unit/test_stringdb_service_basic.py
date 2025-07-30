@@ -1,4 +1,5 @@
 """Basic tests for StringDBService focusing on core functionality."""
+# ruff: noqa: ARG002,SLF001  # Unused method arguments are pytest fixtures, private member access is for testing
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -20,15 +21,13 @@ from stringdb_link.services.stringdb_service import StringDBService
 @pytest.fixture
 def mock_client():
     """Create a mock StringDBClient."""
-    client = AsyncMock()
-    return client
+    return AsyncMock()
 
 
 @pytest.fixture
 def mock_logger():
     """Create a mock logger."""
-    logger = MagicMock()
-    return logger
+    return MagicMock()
 
 
 @pytest.fixture

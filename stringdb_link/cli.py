@@ -105,7 +105,7 @@ def validate_config() -> None:
 
     except Exception as e:
         console.print(f"[red]✗[/red] Configuration validation failed: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -174,7 +174,7 @@ def server(
         console.print("\n[yellow]Server stopped by user[/yellow]")
     except Exception as e:
         console.print(f"[red]Server error:[/red] {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()
@@ -229,12 +229,12 @@ def health() -> None:
             console.print(f"[red]✗[/red] Server health check failed: {response.status_code}")
             raise typer.Exit(1)
 
-    except httpx.ConnectError:
+    except httpx.ConnectError as e:
         console.print("[red]✗[/red] Cannot connect to server. Is it running?")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     except Exception as e:
         console.print(f"[red]✗[/red] Health check error: {e}")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 async def start_server(server_manager: UnifiedServerManager, settings: Settings) -> None:

@@ -1,7 +1,6 @@
 """Fixed tests for caching utilities."""
 
 import asyncio
-import time
 from unittest.mock import MagicMock
 
 import pytest
@@ -34,7 +33,7 @@ class TestCacheManager:
         """Test cache manager initialization."""
         # Act
         mgr = CacheManager(logger=mock_logger, enabled=True)
-        
+
         # Assert
         assert mgr.logger == mock_logger
         assert mgr.enabled is True
@@ -44,7 +43,7 @@ class TestCacheManager:
         """Test cache manager when caching is disabled."""
         # Act
         mgr = CacheManager(enabled=False)
-        
+
         # Assert
         assert not mgr.enabled
 
@@ -52,18 +51,18 @@ class TestCacheManager:
         """Test the cached decorator with a basic async function."""
         # Arrange
         call_count = 0
-        
+
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="test_func")
         async def test_function(arg1, arg2):
             nonlocal call_count
             call_count += 1
             return f"result_{arg1}_{arg2}"
-        
+
         # Act
         result1 = await test_function("a", "b")
         result2 = await test_function("a", "b")  # Should be cached
         result3 = await test_function("c", "d")  # Different args, should call function
-        
+
         # Assert
         assert result1 == "result_a_b"
         assert result2 == "result_a_b"
@@ -74,17 +73,17 @@ class TestCacheManager:
         """Test cached decorator when caching is disabled."""
         # Arrange
         call_count = 0
-        
+
         @disabled_cache_mgr.cached(maxsize=10, ttl=300, cache_name="disabled_test")
         async def test_function(arg):
             nonlocal call_count
             call_count += 1
             return f"result_{arg}"
-        
+
         # Act
         result1 = await test_function("a")
         result2 = await test_function("a")  # Should not be cached
-        
+
         # Assert
         assert result1 == "result_a"
         assert result2 == "result_a"
@@ -96,14 +95,14 @@ class TestCacheManager:
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="stats_test")
         async def test_function(arg):
             return f"result_{arg}"
-        
+
         # Act
         await test_function("a")
         await test_function("a")  # Cache hit
         await test_function("b")  # Cache miss
-        
+
         stats = await cache_mgr.get_stats()
-        
+
         # Assert
         assert isinstance(stats, dict)
         assert "stats_test" in stats
@@ -118,11 +117,11 @@ class TestCacheManager:
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="specific_test")
         async def test_function(arg):
             return f"result_{arg}"
-        
+
         # Act
         await test_function("a")
         stats = await cache_mgr.get_stats("specific_test")
-        
+
         # Assert
         assert isinstance(stats, dict)
         assert "specific_test" in stats
@@ -133,13 +132,13 @@ class TestCacheManager:
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="clear_test")
         async def test_function(arg):
             return f"result_{arg}"
-        
+
         # Fill cache
         await test_function("a")
-        
+
         # Act
         await cache_mgr.clear_all_caches()
-        
+
         # Assert
         # The method should complete without error
         # Stats should be cleared
@@ -150,26 +149,27 @@ class TestCacheManager:
         """Test that exceptions are not cached."""
         # Arrange
         call_count = 0
-        
+
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="exception_test")
         async def test_function(arg):
             nonlocal call_count
             call_count += 1
             if arg == "error":
-                raise ValueError("Test error")
+                msg = "Test error"
+                raise ValueError(msg)
             return f"result_{arg}"
-        
+
         # Act & Assert
         with pytest.raises(ValueError):
             await test_function("error")
-        
+
         with pytest.raises(ValueError):
             await test_function("error")  # Should call function again, not cached
-        
+
         # Successful call should be cached
         result1 = await test_function("success")
         result2 = await test_function("success")
-        
+
         assert result1 == result2 == "result_success"
         assert call_count == 3  # Two error calls + one success call
 
@@ -177,22 +177,22 @@ class TestCacheManager:
         """Test cache TTL expiration."""
         # Arrange
         call_count = 0
-        
+
         @cache_mgr.cached(maxsize=10, ttl=0.1, cache_name="ttl_test")  # 100ms TTL
         async def test_function(arg):
             nonlocal call_count
             call_count += 1
             return f"result_{arg}_{call_count}"
-        
+
         # Act
         result1 = await test_function("a")
         result2 = await test_function("a")  # Should be cached
-        
+
         # Wait for cache to expire
         await asyncio.sleep(0.15)
-        
+
         result3 = await test_function("a")  # Should call function again
-        
+
         # Assert
         assert result1 == result2 == "result_a_1"
         assert result3 == "result_a_2"  # Different (cache expired)
@@ -204,12 +204,12 @@ class TestCacheManager:
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="summary_test")
         async def test_function(arg):
             return f"result_{arg}"
-        
+
         await test_function("a")
-        
+
         # Act
         await cache_mgr.log_cache_summary()
-        
+
         # Assert
         mock_logger.info.assert_called()
 
@@ -225,36 +225,36 @@ class TestCacheManager:
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="attr_test")
         async def test_function(arg):
             return f"result_{arg}"
-        
+
         # Act
         await test_function("a")
-        
+
         # Assert
-        assert hasattr(test_function, 'cache_info')
-        assert hasattr(test_function, 'cache_clear')
-        assert hasattr(test_function, 'cache_stats')
-        
+        assert hasattr(test_function, "cache_info")
+        assert hasattr(test_function, "cache_clear")
+        assert hasattr(test_function, "cache_stats")
+
         # Test cache_info works
         cache_info = test_function.cache_info()
-        assert hasattr(cache_info, 'hits')
-        assert hasattr(cache_info, 'misses')
+        assert hasattr(cache_info, "hits")
+        assert hasattr(cache_info, "misses")
 
     async def test_cache_with_none_values(self, cache_mgr):
         """Test caching of None values."""
         # Arrange
         call_count = 0
-        
+
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="none_test")
         async def test_function(arg):
             nonlocal call_count
             call_count += 1
             return None if arg == "none" else f"result_{arg}"
-        
+
         # Act
         result1 = await test_function("none")
         result2 = await test_function("none")  # Should be cached
         result3 = await test_function("value")
-        
+
         # Assert
         assert result1 is None
         assert result2 is None
@@ -265,17 +265,17 @@ class TestCacheManager:
         """Test caching with complex return objects."""
         # Arrange
         call_count = 0
-        
+
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="complex_test")
         async def test_function(arg):
             nonlocal call_count
             call_count += 1
             return {"key": arg, "count": call_count, "list": [1, 2, 3]}
-        
+
         # Act
         result1 = await test_function("test")
         result2 = await test_function("test")  # Should be cached
-        
+
         # Assert
         assert result1 == result2
         assert result1["count"] == 1  # Should be the cached value
@@ -286,7 +286,7 @@ class TestCacheManager:
         # Arrange
         call_count = 0
         execution_order = []
-        
+
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="concurrent_test")
         async def slow_function(arg):
             nonlocal call_count
@@ -295,11 +295,11 @@ class TestCacheManager:
             await asyncio.sleep(0.1)  # Simulate slow operation
             execution_order.append(f"end_{arg}")
             return f"result_{arg}"
-        
+
         # Act - start multiple concurrent calls with same arguments
         tasks = [slow_function("same_arg") for _ in range(3)]
         results = await asyncio.gather(*tasks)
-        
+
         # Assert
         assert all(result == "result_same_arg" for result in results)
         # The function should only be called once due to caching
@@ -314,7 +314,7 @@ class TestCacheManagerEdgeCases:
         """Test getting stats for a cache that doesn't exist."""
         # Act
         stats = await cache_mgr.get_stats("nonexistent")
-        
+
         # Assert
         assert "nonexistent" in stats
         # Should return empty stats structure
@@ -325,14 +325,14 @@ class TestCacheManagerEdgeCases:
         @cache_mgr.cached(maxsize=10, ttl=300)  # No cache_name provided
         async def test_function_no_name(arg):
             return f"result_{arg}"
-        
+
         # Act
         await test_function_no_name("a")
         stats = await cache_mgr.get_stats()
-        
+
         # Assert
         # Should have generated a cache name based on function name
-        assert any("test_function_no_name" in name for name in stats.keys())
+        assert any("test_function_no_name" in name for name in stats)
 
     async def test_multiple_caches(self, cache_mgr):
         """Test multiple independent caches."""
@@ -340,17 +340,17 @@ class TestCacheManagerEdgeCases:
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="cache1")
         async def function1(arg):
             return f"func1_{arg}"
-        
+
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="cache2")
         async def function2(arg):
             return f"func2_{arg}"
-        
+
         # Act
         await function1("test")
         await function2("test")
-        
+
         stats = await cache_mgr.get_stats()
-        
+
         # Assert
         assert "cache1" in stats
         assert "cache2" in stats

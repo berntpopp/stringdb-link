@@ -1,4 +1,5 @@
 """Fixed tests for rate limiter utilities."""
+# ruff: noqa: SLF001  # Private member access is needed for testing internal state
 
 import asyncio
 import time
@@ -28,7 +29,7 @@ class TestTokenBucketRateLimiter:
         """Test rate limiter initialization."""
         # Act
         limiter = TokenBucketRateLimiter(rate=5.0, burst=10)
-        
+
         # Assert
         assert limiter.rate == 5.0
         assert limiter.burst == 10.0
@@ -39,7 +40,7 @@ class TestTokenBucketRateLimiter:
         """Test rate limiter with minimum valid values."""
         # Act
         limiter = TokenBucketRateLimiter(rate=1.0, burst=1)
-        
+
         # Assert
         assert limiter.rate == 1.0
         assert limiter.burst == 1.0
@@ -49,7 +50,7 @@ class TestTokenBucketRateLimiter:
         """Test rate limiter protects against very low rates."""
         # Act
         limiter = TokenBucketRateLimiter(rate=0.001, burst=1)  # Very low rate
-        
+
         # Assert
         assert limiter.rate == 0.01  # Should be clamped to minimum
         assert limiter.burst == 1.0
@@ -58,7 +59,7 @@ class TestTokenBucketRateLimiter:
         """Test acquire when no waiting is required."""
         # Act
         wait_time = await rate_limiter.acquire()
-        
+
         # Assert
         assert wait_time == 0.0
         assert rate_limiter.tokens == 4.0  # One token consumed
@@ -67,7 +68,7 @@ class TestTokenBucketRateLimiter:
         """Test wait_if_needed when no waiting is required."""
         # Act
         wait_time = await rate_limiter.wait_if_needed()
-        
+
         # Assert
         assert wait_time == 0.0
         assert rate_limiter.tokens == 4.0  # One token consumed
@@ -79,7 +80,7 @@ class TestTokenBucketRateLimiter:
         for _ in range(5):  # Burst capacity is 5
             wait_time = await rate_limiter.wait_if_needed()
             wait_times.append(wait_time)
-        
+
         # Assert
         assert all(wait_time == 0.0 for wait_time in wait_times[:5])
         assert rate_limiter.tokens <= 0.1  # Allow for small time-based refill
@@ -89,12 +90,12 @@ class TestTokenBucketRateLimiter:
         # Arrange - consume the burst capacity
         await strict_rate_limiter.wait_if_needed()
         assert strict_rate_limiter.tokens <= 0.1  # Allow for small time-based refill
-        
+
         # Act - next call should require waiting
         start_time = time.time()
         wait_time = await strict_rate_limiter.wait_if_needed()
         actual_wait_time = time.time() - start_time
-        
+
         # Assert
         assert wait_time > 0
         assert actual_wait_time >= wait_time * 0.8  # Allow some timing variance
@@ -103,12 +104,11 @@ class TestTokenBucketRateLimiter:
     def test_current_tokens_property(self, rate_limiter):
         """Test current_tokens property."""
         # Arrange - consume some tokens
-        initial_tokens = rate_limiter.tokens
         rate_limiter.tokens = 2.0
-        
+
         # Act
         current = rate_limiter.current_tokens
-        
+
         # Assert
         assert current >= 2.0  # Should be at least the current amount
         # Might be higher due to time-based refill
@@ -117,7 +117,7 @@ class TestTokenBucketRateLimiter:
         """Test current_rate with no recent requests."""
         # Act
         rate = rate_limiter.current_rate()
-        
+
         # Assert
         assert rate == 0.0  # No requests made yet
 
@@ -127,10 +127,10 @@ class TestTokenBucketRateLimiter:
         await rate_limiter.wait_if_needed()
         await asyncio.sleep(0.1)  # Small delay
         await rate_limiter.wait_if_needed()
-        
+
         # Act
         rate = rate_limiter.current_rate()
-        
+
         # Assert
         assert rate >= 0.0  # Should have some rate
 
@@ -138,7 +138,7 @@ class TestTokenBucketRateLimiter:
         """Test rate limiter statistics."""
         # Act
         stats = rate_limiter.get_stats()
-        
+
         # Assert
         assert isinstance(stats, dict)
         assert "configured_rate" in stats
@@ -148,7 +148,7 @@ class TestTokenBucketRateLimiter:
         assert "recent_requests" in stats
         assert "total_requests" in stats
         assert "last_request_time" in stats
-        
+
         assert stats["configured_rate"] == rate_limiter.rate
         assert stats["burst_size"] == int(rate_limiter.burst)
 
@@ -158,10 +158,10 @@ class TestTokenBucketRateLimiter:
         await rate_limiter.wait_if_needed()
         await rate_limiter.wait_if_needed()
         assert rate_limiter.tokens < rate_limiter.burst
-        
+
         # Act
         rate_limiter.reset()
-        
+
         # Assert
         assert rate_limiter.tokens == rate_limiter.burst
         assert len(rate_limiter.request_times) == 0
@@ -170,21 +170,21 @@ class TestTokenBucketRateLimiter:
         """Test concurrent requests to rate limiter."""
         # Arrange
         request_count = 10
-        
+
         # Act
         start_time = time.time()
         tasks = [rate_limiter.wait_if_needed() for _ in range(request_count)]
         wait_times = await asyncio.gather(*tasks)
         total_time = time.time() - start_time
-        
+
         # Assert
         # Some requests should not wait (burst capacity), others should wait
         no_wait_count = sum(1 for wt in wait_times if wt == 0.0)
         wait_count = sum(1 for wt in wait_times if wt > 0.0)
-        
+
         assert no_wait_count <= rate_limiter.burst
         assert no_wait_count + wait_count == request_count
-        
+
         # Total time should be reasonable based on rate limiting
         expected_min_time = max(0, (request_count - rate_limiter.burst) / rate_limiter.rate)
         assert total_time >= expected_min_time * 0.2  # Allow significant timing variance
@@ -194,15 +194,15 @@ class TestTokenBucketRateLimiter:
         # Arrange - consume all tokens
         for _ in range(int(rate_limiter.burst)):
             await rate_limiter.wait_if_needed()
-        
+
         initial_tokens = rate_limiter.tokens
-        
+
         # Act - wait for refill
         await asyncio.sleep(0.5)  # 0.5 seconds should refill 1 token at 2/sec rate
-        
+
         # Force token update by accessing current_tokens
         current = rate_limiter.current_tokens
-        
+
         # Assert
         assert current > initial_tokens
 
@@ -210,10 +210,10 @@ class TestTokenBucketRateLimiter:
         """Test wait time calculation when tokens are exhausted."""
         # Arrange - exhaust all tokens
         rate_limiter.tokens = 0.0
-        
+
         # Act - this should return the wait time without actually waiting
         wait_time = asyncio.run(rate_limiter.acquire())
-        
+
         # Assert
         expected_wait = 1.0 / rate_limiter.rate  # Time to get 1 token
         assert abs(wait_time - expected_wait) < 0.1
@@ -222,10 +222,10 @@ class TestTokenBucketRateLimiter:
         """Test that request times are tracked properly."""
         # Arrange
         initial_count = len(rate_limiter.request_times)
-        
+
         # Act
         asyncio.run(rate_limiter.wait_if_needed())
-        
+
         # Assert
         assert len(rate_limiter.request_times) == initial_count + 1
 
@@ -236,10 +236,10 @@ class TestTokenBucketRateLimiter:
         old_time = now - rate_limiter._RATE_WINDOW_SECONDS - 1  # Older than window
         rate_limiter.request_times.append(old_time)
         rate_limiter.request_times.append(now)
-        
+
         # Act - trigger cleanup by making a request
         asyncio.run(rate_limiter.wait_if_needed())
-        
+
         # Assert
         # Old request should be cleaned up
         assert all(now - t <= rate_limiter._RATE_WINDOW_SECONDS for t in rate_limiter.request_times)
@@ -249,9 +249,9 @@ class TestTokenBucketRateLimiter:
         # Act
         asyncio.run(rate_limiter.wait_if_needed())
         asyncio.run(rate_limiter.wait_if_needed())
-        
+
         stats = rate_limiter.get_stats()
-        
+
         # Assert
         assert stats["total_requests"] >= 2
         assert stats["recent_requests"] >= 2
@@ -265,13 +265,13 @@ class TestTokenBucketRateLimiterEdgeCases:
         """Test rate limiter with very high rate limit."""
         # Arrange
         limiter = TokenBucketRateLimiter(rate=1000.0, burst=100)
-        
+
         # Act - make many requests quickly
         wait_times = []
         for _ in range(150):  # More than burst capacity
             wait_time = await limiter.wait_if_needed()
             wait_times.append(wait_time)
-        
+
         # Assert
         # With very high rate, most requests should not wait
         no_wait_count = sum(1 for wt in wait_times if wt == 0.0)
@@ -281,12 +281,12 @@ class TestTokenBucketRateLimiterEdgeCases:
         """Test rate limiter with very low rate limit."""
         # Arrange
         limiter = TokenBucketRateLimiter(rate=0.1, burst=1)  # 1 request per 10 seconds
-        
+
         # Act - make 2 requests
         wait_time1 = await limiter.wait_if_needed()
         # Don't actually wait for the second request in test
         wait_time2 = await limiter.acquire()  # Just get the wait time
-        
+
         # Assert
         assert wait_time1 == 0.0  # First request uses burst
         assert wait_time2 >= 9.0  # Second request should wait ~10 seconds
@@ -295,7 +295,7 @@ class TestTokenBucketRateLimiterEdgeCases:
         """Test rate limiter with fractional rates."""
         # Arrange & Act
         limiter = TokenBucketRateLimiter(rate=1.5, burst=3)
-        
+
         # Assert
         assert limiter.rate == 1.5
         assert limiter.burst == 3.0
@@ -311,7 +311,7 @@ class TestTokenBucketRateLimiterEdgeCases:
                 consumed += 1
             else:
                 break
-        
+
         # Assert
         assert consumed == int(rate_limiter.burst)
 
@@ -321,11 +321,11 @@ class TestTokenBucketRateLimiterEdgeCases:
         rate_limiter.tokens = 0.0
         initial_time = time.time()
         rate_limiter.last_update = initial_time
-        
+
         # Act - simulate very small time increment
-        with patch('time.time', return_value=initial_time + 0.001):  # 1ms
+        with patch("time.time", return_value=initial_time + 0.001):  # 1ms
             current = rate_limiter.current_tokens
-        
+
         # Assert
         # Should handle small increments precisely
         expected_tokens = rate_limiter.rate * 0.001  # Very small refill
@@ -338,7 +338,7 @@ class TestTokenBucketRateLimiterEdgeCases:
         for _ in range(8):  # More than burst capacity
             wait_time = await rate_limiter.acquire()
             results.append(wait_time)
-        
+
         # Assert
         # First 5 should be immediate (burst capacity)
         assert all(wt == 0.0 for wt in results[:int(rate_limiter.burst)])
@@ -351,7 +351,7 @@ class TestTokenBucketRateLimiterEdgeCases:
         stats1 = rate_limiter.get_stats()
         asyncio.run(rate_limiter.wait_if_needed())
         stats2 = rate_limiter.get_stats()
-        
+
         # Assert
         assert stats2["total_requests"] == stats1["total_requests"] + 1
         assert stats2["recent_requests"] >= stats1["recent_requests"]
@@ -365,25 +365,25 @@ class TestTokenBucketRateLimiterIntegration:
         """Test rate limiter with real timing (not mocked)."""
         # Arrange
         limiter = TokenBucketRateLimiter(rate=5.0, burst=2)
-        
+
         # Act - make requests that should trigger rate limiting
         start_time = time.time()
-        
+
         # First two should use burst capacity
         wait1 = await limiter.wait_if_needed()
         wait2 = await limiter.wait_if_needed()
-        
+
         # Third should require waiting
         wait3 = await limiter.wait_if_needed()
-        
+
         end_time = time.time()
         total_time = end_time - start_time
-        
+
         # Assert
         assert wait1 == 0.0
         assert wait2 == 0.0
         assert wait3 > 0.0
-        
+
         # Total time should be at least the wait time for the third request
         assert total_time >= wait3 * 0.8
 
@@ -392,26 +392,26 @@ class TestTokenBucketRateLimiterIntegration:
         # Arrange
         limiter = TokenBucketRateLimiter(rate=2.0, burst=1)
         request_count = 4
-        
+
         # Act
         start_time = time.time()
         wait_times = []
-        
+
         for _ in range(request_count):
             wait_time = await limiter.wait_if_needed()
             wait_times.append(wait_time)
-        
+
         end_time = time.time()
         total_time = end_time - start_time
-        
+
         # Assert
         # First request should use burst (no wait)
         assert wait_times[0] == 0.0
-        
+
         # Most subsequent requests should wait (allow for some timing variance)
         wait_count = sum(1 for wt in wait_times[1:] if wt > 0)
         assert wait_count >= len(wait_times) - 2  # Allow for timing variations
-        
+
         # Total time should be approximately (request_count - 1) / rate
         expected_time = (request_count - 1) / limiter.rate
         assert total_time >= expected_time * 0.5  # Allow significant timing variance
@@ -421,19 +421,19 @@ class TestTokenBucketRateLimiterIntegration:
         """Test that rate limiter recovers tokens after idle period."""
         # Arrange
         limiter = TokenBucketRateLimiter(rate=1.0, burst=3)
-        
+
         # Consume all burst capacity
         for _ in range(3):
             await limiter.wait_if_needed()
-        
+
         assert limiter.tokens <= 0.1  # Allow for small time-based refill
-        
+
         # Wait for recovery (simulate idle period)
         await asyncio.sleep(1.5)  # 1.5 seconds should refill 1.5 tokens
-        
+
         # Act - make request after idle period
         wait_time = await limiter.wait_if_needed()
-        
+
         # Assert
         # Should not need to wait because tokens have been refilled during idle
         assert wait_time == 0.0
@@ -443,11 +443,11 @@ class TestTokenBucketRateLimiterIntegration:
         # Test minimum rate enforcement
         limiter1 = TokenBucketRateLimiter(rate=0.001, burst=1)
         assert limiter1.rate == 0.01  # Should be clamped
-        
+
         # Test minimum burst enforcement
         limiter2 = TokenBucketRateLimiter(rate=1.0, burst=0.5)
         assert limiter2.burst == 1.0  # Should be clamped
-        
+
         # Test normal values
         limiter3 = TokenBucketRateLimiter(rate=5.0, burst=10)
         assert limiter3.rate == 5.0

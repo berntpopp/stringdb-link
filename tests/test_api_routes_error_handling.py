@@ -1,11 +1,12 @@
 """Comprehensive tests for API route error handling."""
+# ruff: noqa: ARG002  # Unused method arguments are pytest fixtures
 
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 from fastapi.testclient import TestClient
+import pytest
 
-from stringdb_link.api.routes.dependencies import get_stringdb_service, get_logger_dependency
+from stringdb_link.api.routes.dependencies import get_logger_dependency, get_stringdb_service
 from stringdb_link.app import app
 from stringdb_link.exceptions import StringDBServiceError, ValidationError
 from stringdb_link.services.stringdb_service import StringDBService
@@ -29,10 +30,10 @@ def client(mock_service, mock_logger):
     # Override dependencies
     app.dependency_overrides[get_stringdb_service] = lambda: mock_service
     app.dependency_overrides[get_logger_dependency] = lambda: mock_logger
-    
+
     test_client = TestClient(app)
     yield test_client
-    
+
     # Clean up dependency overrides
     app.dependency_overrides.clear()
 
@@ -41,7 +42,7 @@ class TestIdentifierRouteErrorHandling:
     """Test error handling in identifier routes."""
 
     @pytest.mark.parametrize(
-        "exception, expected_status",
+        ("exception", "expected_status"),
         [
             (StringDBServiceError("Service down", operation="resolve_identifiers"), 500),
             (ValidationError("Invalid identifier", field="identifiers"), 400),
@@ -69,12 +70,12 @@ class TestIdentifierRouteErrorHandling:
 
         # Verify logger was called
         mock_logger.exception.assert_called_once()
-        
+
         # Verify service was called
         mock_service.resolve_identifiers.assert_called_once()
 
     @pytest.mark.parametrize(
-        "exception, expected_status",
+        ("exception", "expected_status"),
         [
             (StringDBServiceError("Service error", operation="resolve_identifiers"), 500),
             (ValidationError("Validation failed", field="identifier"), 400),
@@ -128,9 +129,9 @@ class TestHealthRouteErrorHandling:
         """Test health check with service error."""
         # Mock a service error
         mock_service.get_cache_stats.side_effect = Exception("Service unavailable")
-        
+
         response = client.get("/api/health")
-        
+
         # Should still return 200 but with error details
         assert response.status_code == 200
         response_data = response.json()
@@ -141,7 +142,7 @@ class TestEnrichmentRouteErrorHandling:
     """Test error handling in enrichment routes."""
 
     @pytest.mark.parametrize(
-        "exception, expected_status",
+        ("exception", "expected_status"),
         [
             (StringDBServiceError("Enrichment service down", operation="functional_enrichment"), 500),
             (ValidationError("Invalid identifiers", field="identifiers"), 400),
@@ -167,7 +168,7 @@ class TestEnrichmentRouteErrorHandling:
         assert "detail" in response_data
 
     @pytest.mark.parametrize(
-        "exception, expected_status",
+        ("exception", "expected_status"),
         [
             (StringDBServiceError("PPI service down", operation="ppi_enrichment"), 500),
             (ValidationError("Invalid PPI request", field="identifiers"), 400),
@@ -197,7 +198,7 @@ class TestNetworkRouteErrorHandling:
     """Test error handling in network routes."""
 
     @pytest.mark.parametrize(
-        "exception, expected_status",
+        ("exception", "expected_status"),
         [
             (StringDBServiceError("Network service error", operation="network_interactions"), 500),
             (ValidationError("Invalid network request", field="identifiers"), 400),
@@ -223,7 +224,7 @@ class TestNetworkRouteErrorHandling:
         assert "detail" in response_data
 
     @pytest.mark.parametrize(
-        "exception, expected_status",
+        ("exception", "expected_status"),
         [
             (StringDBServiceError("Partners service error", operation="interaction_partners"), 500),
             (ValidationError("Invalid partners request", field="identifiers"), 400),
@@ -253,7 +254,7 @@ class TestHomologyRouteErrorHandling:
     """Test error handling in homology routes."""
 
     @pytest.mark.parametrize(
-        "exception, expected_status",
+        ("exception", "expected_status"),
         [
             (StringDBServiceError("Homology service error", operation="homology_scores"), 500),
             (ValidationError("Invalid homology request", field="identifiers"), 400),
@@ -279,7 +280,7 @@ class TestHomologyRouteErrorHandling:
         assert "detail" in response_data
 
     @pytest.mark.parametrize(
-        "exception, expected_status",
+        ("exception", "expected_status"),
         [
             (StringDBServiceError("Best hits service error", operation="homology_best_hits"), 500),
             (ValidationError("Invalid best hits request", field="identifiers"), 400),
@@ -309,7 +310,7 @@ class TestImageRouteErrorHandling:
     """Test error handling in image routes."""
 
     @pytest.mark.parametrize(
-        "exception, expected_status",
+        ("exception", "expected_status"),
         [
             (StringDBServiceError("Image service error", operation="network_image"), 500),
             (ValidationError("Invalid image request", field="identifiers"), 400),
@@ -339,7 +340,7 @@ class TestAnnotationRouteErrorHandling:
     """Test error handling in annotation routes."""
 
     @pytest.mark.parametrize(
-        "exception, expected_status",
+        ("exception", "expected_status"),
         [
             (StringDBServiceError("Annotation service error", operation="functional_annotation"), 500),
             (ValidationError("Invalid annotation request", field="identifiers"), 400),
@@ -374,7 +375,7 @@ class TestRouteExceptionSpecifics:
         """Test StringDBServiceError with specific status code."""
         # Arrange
         error = StringDBServiceError(
-            "Service unavailable", 
+            "Service unavailable",
             operation="resolve_identifiers"
         )
         mock_service.resolve_identifiers.side_effect = error
@@ -412,7 +413,7 @@ class TestRouteExceptionSpecifics:
         assert response.status_code == 400
         response_data = response.json()
         assert "Validation error: Identifier list cannot be empty" in response_data["detail"]
-        
+
         # Verify logger called with field info
         mock_logger.exception.assert_called_once()
         call_args = mock_logger.exception.call_args
@@ -435,7 +436,7 @@ class TestRouteExceptionSpecifics:
         # Assert
         assert response.status_code == 500
         mock_logger.exception.assert_called_once()
-        
+
         # Check the logger call
         call_args = mock_logger.exception.call_args
         assert len(call_args[0]) > 0  # Has a message
@@ -460,7 +461,7 @@ class TestErrorResponseFormats:
             # Arrange: Make service raise an error
             if "identifiers" in endpoint:
                 mock_service.resolve_identifiers.side_effect = Exception("Test error")
-            elif "enrichment" in endpoint:  
+            elif "enrichment" in endpoint:
                 mock_service.get_functional_enrichment.side_effect = Exception("Test error")
             elif "networks" in endpoint:
                 mock_service.get_network_interactions.side_effect = Exception("Test error")

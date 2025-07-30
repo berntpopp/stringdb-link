@@ -124,7 +124,7 @@ async def resolve_identifiers(
         raise HTTPException(
             status_code=e.status_code or 500,
             detail=f"Service error: {e.message}",
-        )
+        ) from e
 
     except ValidationError as e:
         logger.exception(
@@ -136,7 +136,7 @@ async def resolve_identifiers(
         raise HTTPException(
             status_code=400,
             detail=f"Validation error: {e.message}",
-        )
+        ) from e
 
     except Exception as e:
         logger.exception(
@@ -146,7 +146,7 @@ async def resolve_identifiers(
         raise HTTPException(
             status_code=500,
             detail="Internal server error during identifier resolution",
-        )
+        ) from e
 
 
 @router.get("/identifiers/resolve/{identifier}")
@@ -209,7 +209,7 @@ async def resolve_single_identifier(
         raise HTTPException(
             status_code=e.status_code or 500,
             detail=f"Service error: {e.message}",
-        )
+        ) from e
 
     except ValidationError as e:
         logger.exception(
@@ -222,7 +222,7 @@ async def resolve_single_identifier(
         raise HTTPException(
             status_code=400,
             detail=f"Validation error: {e.message}",
-        )
+        ) from e
 
     except Exception as e:
         logger.exception(
@@ -233,4 +233,4 @@ async def resolve_single_identifier(
         raise HTTPException(
             status_code=500,
             detail="Internal server error during identifier resolution",
-        )
+        ) from e

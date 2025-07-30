@@ -60,7 +60,7 @@ def test_logging_imports():
     """Test that all logging-related imports work."""
     # Test that we can import logging functions without errors
     try:
-        from stringdb_link.logging_config import (
+        from stringdb_link.logging_config import (  # noqa: F401
             configure_logging,
             log_server_startup,
         )

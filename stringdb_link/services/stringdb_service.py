@@ -12,14 +12,6 @@ from typing import TYPE_CHECKING, Any
 from stringdb_link.config import settings
 from stringdb_link.exceptions import StringDBServiceError
 from stringdb_link.logging_config import get_logger
-from stringdb_link.models.requests import (
-    AnnotationRequest,
-    EnrichmentRequest,
-    IdentifierRequest,
-    ImageRequest,
-    InteractionPartnersRequest,
-    NetworkRequest,
-)
 from stringdb_link.models.responses import (
     EnrichmentTerm,
     EnrichmentTermListResponse,
@@ -41,6 +33,17 @@ if TYPE_CHECKING:
     from structlog.typing import FilteringBoundLogger
 
     from stringdb_link.api.client import StringDBClient
+    from stringdb_link.models.requests import (
+        AnnotationRequest,
+        EnrichmentRequest,
+        IdentifierRequest,
+        ImageRequest,
+        InteractionPartnersRequest,
+        LinkRequest,
+        NetworkRequest,
+        PPIEnrichmentRequest,
+    )
+    from stringdb_link.models.responses import LinkInfo, PPIEnrichmentResult
 
 
 class StringDBService:
@@ -743,10 +746,7 @@ class StringDBService:
             )
 
             # Extract URL from result
-            if isinstance(result, dict):
-                url = result.get("url", str(result))
-            else:
-                url = str(result)
+            url = result.get("url", str(result)) if isinstance(result, dict) else str(result)
 
             from stringdb_link.models.responses import LinkInfo
 

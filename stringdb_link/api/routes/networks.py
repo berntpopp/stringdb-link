@@ -89,7 +89,7 @@ async def get_network_interactions(
         raise HTTPException(
             status_code=e.status_code or 502,
             detail=f"StringDB service error: {e.message}",
-        )
+        ) from e
 
     except ValidationError as e:
         logger.exception(
@@ -99,7 +99,7 @@ async def get_network_interactions(
         raise HTTPException(
             status_code=400,
             detail=f"Validation error: {e.message}",
-        )
+        ) from e
 
     except Exception as e:
         logger.exception(
@@ -109,7 +109,7 @@ async def get_network_interactions(
         raise HTTPException(
             status_code=500,
             detail="Internal server error during network interaction retrieval",
-        )
+        ) from e
 
 
 @router.post("/networks/partners", response_model=InteractionPartnerListResponse)
@@ -169,7 +169,7 @@ async def get_interaction_partners(
         raise HTTPException(
             status_code=e.status_code or 502,
             detail=f"StringDB service error: {e.message}",
-        )
+        ) from e
 
     except ValidationError as e:
         logger.exception(
@@ -181,7 +181,7 @@ async def get_interaction_partners(
         raise HTTPException(
             status_code=400,
             detail=f"Validation error: {e.message}",
-        )
+        ) from e
 
     except Exception as e:
         logger.exception(
@@ -191,7 +191,7 @@ async def get_interaction_partners(
         raise HTTPException(
             status_code=500,
             detail="Internal server error during interaction partner retrieval",
-        )
+        ) from e
 
 
 @router.get("/networks/interactions/{identifier}")
@@ -249,7 +249,7 @@ async def get_single_protein_network(
         raise HTTPException(
             status_code=500,
             detail="Internal server error during network retrieval",
-        )
+        ) from e
 
 
 @router.get("/networks/partners/{identifier}")
@@ -307,7 +307,7 @@ async def get_single_protein_partners(
         raise HTTPException(
             status_code=500,
             detail="Internal server error during partner retrieval",
-        )
+        ) from e
 
 
 @router.post("/networks/link", response_model=LinkInfo)
@@ -349,7 +349,7 @@ async def get_network_link(
         )
 
     except StringDBServiceError as e:
-        logger.error(
+        logger.exception(
             "StringDB service error during link generation",
             identifiers=request.identifiers,
             error=str(e),

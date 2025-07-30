@@ -1,7 +1,6 @@
 """Tests for health check endpoints."""
 
 from fastapi.testclient import TestClient
-import pytest
 
 from stringdb_link.models.responses import HealthResponse
 

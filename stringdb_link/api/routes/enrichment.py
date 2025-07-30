@@ -12,13 +12,12 @@ from stringdb_link.models.responses import (
     EnrichmentTermListResponse,
     PPIEnrichmentResult,
 )
+from stringdb_link.services.stringdb_service import StringDBService
 
 from .dependencies import LoggerDep, StringDBServiceDep
 
 if TYPE_CHECKING:
     from structlog.typing import FilteringBoundLogger
-
-    from stringdb_link.services.stringdb_service import StringDBService
 
 router = APIRouter()
 
@@ -46,7 +45,7 @@ async def get_functional_enrichment(
         raise HTTPException(
             status_code=e.status_code or 500,
             detail=f"Service error: {e.message}",
-        )
+        ) from e
 
     except ValidationError as e:
         logger.exception(
@@ -58,7 +57,7 @@ async def get_functional_enrichment(
         raise HTTPException(
             status_code=400,
             detail=f"Validation error: {e.message}",
-        )
+        ) from e
 
     except Exception as e:
         logger.exception(
@@ -68,7 +67,7 @@ async def get_functional_enrichment(
         raise HTTPException(
             status_code=500,
             detail="Internal server error during functional enrichment",
-        )
+        ) from e
 
 
 @router.post("/enrichment/ppi", response_model=PPIEnrichmentResult)
@@ -81,9 +80,8 @@ async def get_ppi_enrichment(
     try:
         logger.info("Performing PPI enrichment analysis", identifiers=request.identifiers)
 
-        result = await service.get_ppi_enrichment(request)
+        return await service.get_ppi_enrichment(request)
 
-        return result
 
     except StringDBServiceError as e:
         logger.exception(
@@ -94,7 +92,7 @@ async def get_ppi_enrichment(
         raise HTTPException(
             status_code=e.status_code or 500,
             detail=f"Service error: {e.message}",
-        )
+        ) from e
 
     except ValidationError as e:
         logger.exception(
@@ -106,7 +104,7 @@ async def get_ppi_enrichment(
         raise HTTPException(
             status_code=400,
             detail=f"Validation error: {e.message}",
-        )
+        ) from e
 
     except Exception as e:
         logger.exception(
@@ -116,4 +114,4 @@ async def get_ppi_enrichment(
         raise HTTPException(
             status_code=500,
             detail="Internal server error during PPI enrichment",
-        )
+        ) from e

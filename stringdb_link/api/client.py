@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import time
-import types
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
 
@@ -28,6 +27,8 @@ from stringdb_link.models.stringdb import OutputFormat
 from stringdb_link.utils.rate_limiter import AdaptiveRateLimiter
 
 if TYPE_CHECKING:
+    import types
+
     from structlog.typing import FilteringBoundLogger
 
 

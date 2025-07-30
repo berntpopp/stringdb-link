@@ -101,7 +101,7 @@ async def get_homology_scores(
         raise HTTPException(
             status_code=e.status_code or 500,
             detail=f"Service error: {e.message}",
-        )
+        ) from e
 
     except ValidationError as e:
         logger.exception(
@@ -113,7 +113,7 @@ async def get_homology_scores(
         raise HTTPException(
             status_code=400,
             detail=f"Validation error: {e.message}",
-        )
+        ) from e
 
     except Exception as e:
         logger.exception(
@@ -123,7 +123,7 @@ async def get_homology_scores(
         raise HTTPException(
             status_code=500,
             detail="Internal server error during homology score retrieval",
-        )
+        ) from e
 
 
 @router.post(
@@ -139,7 +139,10 @@ async def get_homology_scores(
             "description": "Homology scores in specified format",
             "content": {
                 "text/plain": {
-                    "example": "stringId_A\tstringId_B\tbitscore\tevalue\nprotein1\tprotein2\t850\t0.0"
+                    "example": (
+                        "stringId_A\tstringId_B\tbitscore\tevalue\n"
+                        "protein1\tprotein2\t850\t0.0"
+                    )
                 }
             },
         },
@@ -152,7 +155,7 @@ async def download_homology_scores(
     request: HomologyRequest,
     service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
-    output_format: OutputFormat = Query(
+    output_format: OutputFormat = Query(  # noqa: B008
         OutputFormat.TSV,
         description="Output format (TSV, XML, PSI-MI)",
     ),
@@ -183,7 +186,7 @@ async def download_homology_scores(
         raise HTTPException(
             status_code=e.status_code or 500,
             detail=f"Service error: {e.message}",
-        )
+        ) from e
 
     except ValidationError as e:
         logger.exception(
@@ -195,7 +198,7 @@ async def download_homology_scores(
         raise HTTPException(
             status_code=400,
             detail=f"Validation error: {e.message}",
-        )
+        ) from e
 
     except Exception as e:
         logger.exception(
@@ -205,7 +208,7 @@ async def download_homology_scores(
         raise HTTPException(
             status_code=500,
             detail="Internal server error during homology score download",
-        )
+        ) from e
 
 
 @router.post(
@@ -281,7 +284,7 @@ async def get_homology_best_hits(
         raise HTTPException(
             status_code=e.status_code or 500,
             detail=f"Service error: {e.message}",
-        )
+        ) from e
 
     except ValidationError as e:
         logger.exception(
@@ -293,7 +296,7 @@ async def get_homology_best_hits(
         raise HTTPException(
             status_code=400,
             detail=f"Validation error: {e.message}",
-        )
+        ) from e
 
     except Exception as e:
         logger.exception(
@@ -303,7 +306,7 @@ async def get_homology_best_hits(
         raise HTTPException(
             status_code=500,
             detail="Internal server error during homology best hits retrieval",
-        )
+        ) from e
 
 
 @router.post(
@@ -319,7 +322,10 @@ async def get_homology_best_hits(
             "description": "Best homology hits in specified format",
             "content": {
                 "text/plain": {
-                    "example": "stringId_A\tstringId_B\tbitscore\tevalue\nprotein1\tprotein2\t850\t0.0"
+                    "example": (
+                        "stringId_A\tstringId_B\tbitscore\tevalue\n"
+                        "protein1\tprotein2\t850\t0.0"
+                    )
                 }
             },
         },
@@ -332,7 +338,7 @@ async def download_homology_best_hits(
     request: HomologyBestRequest,
     service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
-    output_format: OutputFormat = Query(
+    output_format: OutputFormat = Query(  # noqa: B008
         OutputFormat.TSV,
         description="Output format (TSV, XML, PSI-MI)",
     ),
@@ -351,7 +357,9 @@ async def download_homology_best_hits(
             content=result,
             media_type="text/plain",
             headers={
-                "Content-Disposition": f"attachment; filename=homology_best_hits.{output_format.value}"
+                "Content-Disposition": (
+                    f"attachment; filename=homology_best_hits.{output_format.value}"
+                )
             },
         )
 
@@ -364,7 +372,7 @@ async def download_homology_best_hits(
         raise HTTPException(
             status_code=e.status_code or 500,
             detail=f"Service error: {e.message}",
-        )
+        ) from e
 
     except ValidationError as e:
         logger.exception(
@@ -376,7 +384,7 @@ async def download_homology_best_hits(
         raise HTTPException(
             status_code=400,
             detail=f"Validation error: {e.message}",
-        )
+        ) from e
 
     except Exception as e:
         logger.exception(
@@ -386,4 +394,4 @@ async def download_homology_best_hits(
         raise HTTPException(
             status_code=500,
             detail="Internal server error during homology best hits download",
-        )
+        ) from e
