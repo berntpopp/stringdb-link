@@ -69,25 +69,3 @@ async def version_info() -> dict[str, Any]:
     }
 
 
-@router.get("/health/live")
-async def liveness_probe() -> dict[str, str]:
-    """Kubernetes liveness probe endpoint."""
-    return {"status": "alive"}
-
-
-@router.get("/health/detailed", response_model=HealthResponse)
-async def detailed_health_check(
-    client: StringDBClient = StringDBClientDep,
-    logger: FilteringBoundLogger = LoggerDep,
-) -> HealthResponse:
-    """Detailed health check including external dependencies."""
-    return await health_check(client, logger)
-
-
-@router.get("/cache/stats")
-async def cache_stats() -> dict[str, Any]:
-    """Get cache statistics."""
-    if not settings.cache_enabled:
-        return {"cache_enabled": False, "message": "Caching is disabled"}
-
-    return {"cache_enabled": True, "cache_stats": {"hits": 0, "misses": 0, "size": 0}}
