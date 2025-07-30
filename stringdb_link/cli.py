@@ -154,10 +154,8 @@ def server(
     # Validate transport mode
     if settings.transport not in ("http", "stdio", "unified"):
         console.print(
-
-                f"[red]Error:[/red] Invalid transport mode '{settings.transport}'. "
-                "Must be: http, stdio, or unified"
-
+            f"[red]Error:[/red] Invalid transport mode '{settings.transport}'. "
+            "Must be: http, stdio, or unified"
         )
         raise typer.Exit(1)
 

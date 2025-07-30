@@ -105,9 +105,10 @@ def test_resolve_single_identifier_success(test_client: TestClient):
     assert response.status_code == 200
     data = response.json()
 
-    assert data["query_item"] == "p53"
-    assert data["string_id"] == "9606.ENSP00000269305"
-    assert data["preferred_name"] == "TP53"
+    # The response uses the original API format (camelCase) due to Pydantic aliases
+    assert data["queryItem"] == "p53"
+    assert data["stringId"] == "9606.ENSP00000269305"
+    assert data["preferredName"] == "TP53"
 
 
 def test_resolve_single_identifier_not_found(test_client: TestClient):

@@ -46,8 +46,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="StringDB-Link",
         description=(
-            "High-performance unified API server for STRING "
-            "protein-protein interaction database"
+            "High-performance unified API server for STRING protein-protein interaction database"
         ),
         version="0.1.0",
         docs_url="/docs",

@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from fastapi import Response
 
 from stringdb_link.exceptions import StringDBAPIError, ValidationError
-from stringdb_link.models.stringdb import OutputFormat
 from stringdb_link.models.requests import InteractionPartnersRequest, LinkRequest, NetworkRequest
 from stringdb_link.models.responses import (
     InteractionPartner,
@@ -24,6 +23,7 @@ from stringdb_link.models.responses import (
     NetworkInteraction,
     NetworkInteractionListResponse,
 )
+from stringdb_link.models.stringdb import OutputFormat
 
 from .dependencies import LoggerDep, StringDBClientDep
 
@@ -336,7 +336,6 @@ async def get_single_protein_partners(
         )
 
 
-
 @router.post("/networks/link", response_model=LinkInfo)
 async def get_network_link(
     request: LinkRequest,
@@ -348,11 +347,11 @@ async def get_network_link(
     ),
 ) -> Response:
     """Get shareable link to STRING webpage for the network.
-    
+
     This endpoint generates a shareable URL that leads to the STRING database
     website showing the protein interaction network for the specified proteins.
     The link includes all visualization parameters and can be shared with others.
-    
+
     The generated link allows users to:
     - View the network interactively on the STRING website
     - Access additional features like network customization
@@ -385,7 +384,7 @@ async def get_network_link(
                 url = result.get("url", str(result))
             else:
                 url = str(result)
-                
+
             logger.info(
                 "Successfully generated network link",
                 identifiers=request.identifiers,
@@ -393,12 +392,11 @@ async def get_network_link(
             )
 
             return LinkInfo(url=url)
-        else:
-            # Return raw text for non-JSON formats
-            return PlainTextResponse(
-                content=result,
-                media_type="text/plain",
-            )
+        # Return raw text for non-JSON formats
+        return PlainTextResponse(
+            content=result,
+            media_type="text/plain",
+        )
 
     except StringDBAPIError as e:
         logger.error(

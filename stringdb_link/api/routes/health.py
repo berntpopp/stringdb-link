@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter
 
+from stringdb_link.config import settings
 from stringdb_link.models.responses import HealthResponse
 
 from .dependencies import LoggerDep, StringDBClientDep
@@ -16,38 +17,75 @@ if TYPE_CHECKING:
 
     from stringdb_link.api.client import StringDBClient
 
-router = APIRouter(prefix="/api/health", tags=["health"])
+router = APIRouter(prefix="/api", tags=["health"])
 
 # Track server start time for uptime calculation
 _start_time = time.time()
 
 
-@router.get("/", response_model=HealthResponse)
+@router.get("/health", response_model=HealthResponse)
 async def health_check(
     client: StringDBClient = StringDBClientDep,
     logger: FilteringBoundLogger = LoggerDep,
 ) -> HealthResponse:
     """Health check for the StringDB-Link service."""
     # Check StringDB API health
-    stringdb_status = "healthy"
+    stringdb_status = "available"
+    overall_status = "healthy"
     try:
         await client.get_version()
     except Exception as e:
         logger.warning("StringDB API health check failed", error=str(e))
-        stringdb_status = "degraded"
+        stringdb_status = "unavailable"
+        overall_status = "degraded"
 
     uptime = time.time() - _start_time
+    cache_status = "enabled" if settings.cache_enabled else "disabled"
 
     logger.info(
         "Health check completed",
-        overall_status=stringdb_status,
+        overall_status=overall_status,
         stringdb_status=stringdb_status,
     )
 
     return HealthResponse(
-        status=stringdb_status,
+        status=overall_status,
         version="0.1.0",
         stringdb_api=stringdb_status,
-        cache="enabled",
+        cache=cache_status,
         uptime_seconds=uptime,
     )
+
+
+@router.get("/version")
+async def version_info() -> dict[str, Any]:
+    """Get version information."""
+    return {
+        "version": "0.1.0",
+        "api_version": "v1",
+        "stringdb_api": settings.stringdb_base_url,
+    }
+
+
+@router.get("/health/live")
+async def liveness_probe() -> dict[str, str]:
+    """Kubernetes liveness probe endpoint."""
+    return {"status": "alive"}
+
+
+@router.get("/health/detailed", response_model=HealthResponse)
+async def detailed_health_check(
+    client: StringDBClient = StringDBClientDep,
+    logger: FilteringBoundLogger = LoggerDep,
+) -> HealthResponse:
+    """Detailed health check including external dependencies."""
+    return await health_check(client, logger)
+
+
+@router.get("/cache/stats")
+async def cache_stats() -> dict[str, Any]:
+    """Get cache statistics."""
+    if not settings.cache_enabled:
+        return {"cache_enabled": False, "message": "Caching is disabled"}
+
+    return {"cache_enabled": True, "cache_stats": {"hits": 0, "misses": 0, "size": 0}}

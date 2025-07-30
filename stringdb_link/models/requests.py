@@ -628,7 +628,6 @@ class EnrichmentImageRequest(BaseRequest):
         return cleaned
 
 
-
 class LinkRequest(BaseRequest):
     """Request model for getting shareable STRING webpage links."""
 

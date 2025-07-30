@@ -59,7 +59,7 @@ def override_settings(test_settings: Settings) -> Generator[Settings, None, None
 
 
 @pytest.fixture
-def test_client(_override_settings: Settings) -> Generator[TestClient, None, None]:
+def test_client(override_settings: Settings) -> Generator[TestClient, None, None]:
     """Create test client."""
     client = TestClient(app)
     yield client
@@ -68,7 +68,7 @@ def test_client(_override_settings: Settings) -> Generator[TestClient, None, Non
 
 @pytest_asyncio.fixture
 async def async_client(
-    _override_settings: Settings,
+    override_settings: Settings,
 ) -> AsyncGenerator[AsyncClient, None]:
     """Create async test client."""
     async with AsyncClient(app=app, base_url="http://test") as client:
@@ -111,14 +111,14 @@ def mock_stringdb_client() -> MagicMock:
             "preferredName_A": "TP53",
             "preferredName_B": "MDM2",
             "ncbiTaxonId": 9606,
-            "score": 999,
-            "nscore": 0,
-            "fscore": 0,
-            "pscore": 0,
-            "ascore": 203,
-            "escore": 938,
-            "dscore": 999,
-            "tscore": 995,
+            "score": 0.999,
+            "nscore": 0.0,
+            "fscore": 0.0,
+            "pscore": 0.0,
+            "ascore": 0.203,
+            "escore": 0.938,
+            "dscore": 0.999,
+            "tscore": 0.995,
         }
     ]
 
@@ -198,14 +198,14 @@ def sample_network_response() -> list[dict]:
             "preferredName_A": "TP53",
             "preferredName_B": "MDM2",
             "ncbiTaxonId": 9606,
-            "score": 999,
-            "nscore": 0,
-            "fscore": 0,
-            "pscore": 0,
-            "ascore": 203,
-            "escore": 938,
-            "dscore": 999,
-            "tscore": 995,
+            "score": 0.999,
+            "nscore": 0.0,
+            "fscore": 0.0,
+            "pscore": 0.0,
+            "ascore": 0.203,
+            "escore": 0.938,
+            "dscore": 0.999,
+            "tscore": 0.995,
         },
         {
             "stringId_A": "9606.ENSP00000269305",
@@ -213,13 +213,13 @@ def sample_network_response() -> list[dict]:
             "preferredName_A": "TP53",
             "preferredName_B": "ATM",
             "ncbiTaxonId": 9606,
-            "score": 900,
-            "nscore": 0,
-            "fscore": 0,
-            "pscore": 0,
-            "ascore": 150,
-            "escore": 800,
-            "dscore": 900,
-            "tscore": 850,
+            "score": 0.900,
+            "nscore": 0.0,
+            "fscore": 0.0,
+            "pscore": 0.0,
+            "ascore": 0.150,
+            "escore": 0.800,
+            "dscore": 0.900,
+            "tscore": 0.850,
         },
     ]
