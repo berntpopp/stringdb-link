@@ -198,7 +198,7 @@ async def get_interaction_partners(
 async def get_single_protein_network(
     identifier: str,
     species: int = Query(None, description="NCBI taxon identifier"),
-    required_score: int = Query(400, description="Minimum confidence score (0-1000)"),
+    required_score: float = Query(0.4, description="Minimum confidence score (0.0-1.0)"),
     add_nodes: int = Query(10, description="Number of additional nodes to add"),
     network_type: str = Query("functional", description="Network type (functional or physical)"),
     service: StringDBService = StringDBServiceDep,
@@ -212,7 +212,7 @@ async def get_single_protein_network(
     Args:
         identifier: Protein identifier
         species: NCBI taxon identifier
-        required_score: Minimum confidence score (0-1000)
+        required_score: Minimum confidence score (0.0-1.0)
         add_nodes: Number of additional nodes to add
         network_type: Network type (functional or physical)
         client: StringDB HTTP client
@@ -257,7 +257,7 @@ async def get_single_protein_partners(
     identifier: str,
     species: int = Query(None, description="NCBI taxon identifier"),
     limit: int = Query(10, description="Maximum number of partners"),
-    required_score: int = Query(400, description="Minimum confidence score (0-1000)"),
+    required_score: float = Query(0.4, description="Minimum confidence score (0.0-1.0)"),
     network_type: str = Query("functional", description="Network type (functional or physical)"),
     service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
@@ -271,7 +271,7 @@ async def get_single_protein_partners(
         identifier: Protein identifier
         species: NCBI taxon identifier
         limit: Maximum number of partners
-        required_score: Minimum confidence score (0-1000)
+        required_score: Minimum confidence score (0.0-1.0)
         network_type: Network type (functional or physical)
         client: StringDB HTTP client
         logger: Logger instance

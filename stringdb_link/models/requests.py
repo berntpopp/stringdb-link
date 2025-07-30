@@ -92,11 +92,11 @@ class NetworkRequest(BaseRequest):
         description="NCBI taxon identifier",
         json_schema_extra={"example": 9606},
     )
-    required_score: int = Field(
+    required_score: float = Field(
         ConfidenceScore.MEDIUM,
         ge=MIN_CONFIDENCE_SCORE,
         le=MAX_CONFIDENCE_SCORE,
-        description="Minimum confidence score (0-1000)",
+        description="Minimum confidence score (0.0-1.0)",
     )
     network_type: NetworkType = Field(
         NetworkType.FUNCTIONAL,
@@ -158,11 +158,11 @@ class InteractionPartnersRequest(BaseRequest):
         le=500,
         description="Maximum number of interaction partners per protein",
     )
-    required_score: int = Field(
+    required_score: float = Field(
         ConfidenceScore.MEDIUM,
         ge=MIN_CONFIDENCE_SCORE,
         le=MAX_CONFIDENCE_SCORE,
-        description="Minimum confidence score (0-1000)",
+        description="Minimum confidence score (0.0-1.0)",
     )
     network_type: NetworkType = Field(
         NetworkType.FUNCTIONAL,
@@ -340,11 +340,11 @@ class ImageRequest(BaseRequest):
         NetworkType.FUNCTIONAL,
         description="Network type: functional or physical",
     )
-    required_score: int = Field(
+    required_score: float = Field(
         ConfidenceScore.MEDIUM,
         ge=MIN_CONFIDENCE_SCORE,
         le=MAX_CONFIDENCE_SCORE,
-        description="Minimum confidence score (0-1000)",
+        description="Minimum confidence score (0.0-1.0)",
     )
     image_format: ImageFormat = Field(
         ImageFormat.PNG,
@@ -504,11 +504,11 @@ class PPIEnrichmentRequest(BaseRequest):
         description="NCBI taxon identifier",
         json_schema_extra={"example": 511145},
     )
-    required_score: int = Field(
+    required_score: float = Field(
         ConfidenceScore.MEDIUM,
         ge=MIN_CONFIDENCE_SCORE,
         le=MAX_CONFIDENCE_SCORE,
-        description="Minimum confidence score (0-1000)",
+        description="Minimum confidence score (0.0-1.0)",
     )
     background_string_identifiers: list[str] | None = Field(
         None,
@@ -644,11 +644,11 @@ class LinkRequest(BaseRequest):
         description="NCBI taxon identifier",
         json_schema_extra={"example": 9606},
     )
-    required_score: int = Field(
+    required_score: float = Field(
         ConfidenceScore.MEDIUM,
         ge=MIN_CONFIDENCE_SCORE,
         le=MAX_CONFIDENCE_SCORE,
-        description="Minimum confidence score (0-1000)",
+        description="Minimum confidence score (0.0-1.0)",
     )
     network_type: NetworkType = Field(
         NetworkType.FUNCTIONAL,

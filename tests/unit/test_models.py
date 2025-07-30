@@ -53,14 +53,14 @@ class TestRequestModels:
         request = NetworkRequest(
             identifiers=["TP53", "MDM2"],
             species=Species.HUMAN,
-            required_score=400,
+            required_score=0.4,
             network_type=NetworkType.FUNCTIONAL,
             add_nodes=10,
         )
 
         assert request.identifiers == ["TP53", "MDM2"]
         assert request.species == 9606
-        assert request.required_score == 400
+        assert request.required_score == 0.4
         assert request.network_type == NetworkType.FUNCTIONAL
         assert request.add_nodes == 10
 
@@ -75,16 +75,16 @@ class TestRequestModels:
 
         request = NetworkRequest(
             identifiers=["TP53"],
-            required_score=1000,
+            required_score=1.0,
         )
-        assert request.required_score == 1000
+        assert request.required_score == 1.0
 
         # Invalid scores
         with pytest.raises(ValidationError):
             NetworkRequest(identifiers=["TP53"], required_score=-1)
 
         with pytest.raises(ValidationError):
-            NetworkRequest(identifiers=["TP53"], required_score=1001)
+            NetworkRequest(identifiers=["TP53"], required_score=1.1)
 
     def test_enrichment_request_background(self):
         """Test enrichment request with background."""
@@ -127,19 +127,19 @@ class TestResponseModels:
             preferred_name_a="TP53",
             preferred_name_b="MDM2",
             ncbi_taxon_id=9606,
-            score=999,
-            nscore=0,
-            fscore=0,
-            pscore=0,
-            ascore=203,
-            escore=938,
-            dscore=999,
-            tscore=995,
+            score=0.999,
+            nscore=0.0,
+            fscore=0.0,
+            pscore=0.0,
+            ascore=0.203,
+            escore=0.938,
+            dscore=0.999,
+            tscore=0.995,
         )
 
         assert interaction.string_id_a == "9606.ENSP00000269305"
         assert interaction.preferred_name_a == "TP53"
-        assert interaction.score == 999
+        assert interaction.score == 0.999
 
     def test_enrichment_term(self):
         """Test EnrichmentTerm model."""
@@ -189,16 +189,16 @@ class TestResponseModels:
             preferred_name_a="TP53",
             preferred_name_b="MDM2",
             ncbi_taxon_id=9606,
-            score=1000,
-            nscore=1000,
-            fscore=1000,
-            pscore=1000,
-            ascore=1000,
-            escore=1000,
-            dscore=1000,
-            tscore=1000,
+            score=1.0,
+            nscore=1.0,
+            fscore=1.0,
+            pscore=1.0,
+            ascore=1.0,
+            escore=1.0,
+            dscore=1.0,
+            tscore=1.0,
         )
-        assert interaction.score == 1000
+        assert interaction.score == 1.0
 
         # Invalid scores (negative)
         with pytest.raises(ValidationError):

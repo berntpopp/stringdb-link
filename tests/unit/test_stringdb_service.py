@@ -118,7 +118,7 @@ class TestStringDBService:
         request = NetworkRequest(
             identifiers=["9606.ENSP00000269305"],
             species=9606,
-            required_score=400,
+            required_score=0.4,
             network_type=NetworkType.FUNCTIONAL,
         )
         mock_interactions = [
@@ -456,7 +456,7 @@ class TestStringDBServiceErrorHandling:
     async def test_network_interactions_with_validation_error(self, service, mock_client):
         """Test network interactions with validation error."""
         # Arrange
-        request = NetworkRequest(identifiers=["9606.ENSP00000269305"], species=9606, required_score=400)
+        request = NetworkRequest(identifiers=["9606.ENSP00000269305"], species=9606, required_score=0.4)
         mock_client.get_network_interactions.side_effect = ValueError("Validation failed")
 
         # Act & Assert - Should raise StringDBServiceError

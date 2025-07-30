@@ -93,14 +93,14 @@ class Species:
     MACAQUE: Final[int] = 9544
 
 
-# Confidence score thresholds
+# Confidence score thresholds (normalized 0.0-1.0)
 class ConfidenceScore:
-    """Standard confidence score thresholds."""
+    """Standard confidence score thresholds (normalized 0.0-1.0)."""
 
-    LOW: Final[int] = 150
-    MEDIUM: Final[int] = 400
-    HIGH: Final[int] = 700
-    HIGHEST: Final[int] = 900
+    LOW: Final[float] = 0.15
+    MEDIUM: Final[float] = 0.4
+    HIGH: Final[float] = 0.7
+    HIGHEST: Final[float] = 0.9
 
 
 # API endpoint constants
@@ -133,9 +133,9 @@ DEFAULT_INTERACTION_LIMIT: Final[int] = 10
 MAX_IDENTIFIERS_PER_REQUEST: Final[int] = 100
 MAX_ADDITIONAL_NODES: Final[int] = 50
 
-# Score ranges
-MIN_CONFIDENCE_SCORE: Final[int] = 0
-MAX_CONFIDENCE_SCORE: Final[int] = 1000
+# Score ranges (normalized 0.0-1.0)
+MIN_CONFIDENCE_SCORE: Final[float] = 0.0
+MAX_CONFIDENCE_SCORE: Final[float] = 1.0
 
 # Cache TTL defaults (in seconds)
 DEFAULT_CACHE_TTL: Final[int] = 3600

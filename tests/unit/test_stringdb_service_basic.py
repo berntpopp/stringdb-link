@@ -89,7 +89,7 @@ class TestStringDBServiceCore:
         # Arrange
         request = NetworkRequest(
             identifiers=["9606.ENSP00000269305"],
-            required_score=400,
+            required_score=0.4,
             network_type=NetworkType.FUNCTIONAL,
         )
 

@@ -43,26 +43,26 @@ class TestRequestModelValidation:
         """Test network request validation."""
         request = NetworkRequest(
             identifiers=["9606.ENSP00000269305"],
-            required_score=700,
+            required_score=0.7,
             network_type=NetworkType.FUNCTIONAL,
             add_nodes=10,
         )
-        assert request.required_score == 700
+        assert request.required_score == 0.7
         assert request.network_type == NetworkType.FUNCTIONAL
         assert request.add_nodes == 10
 
     def test_network_request_score_bounds(self):
         """Test network request score validation."""
         # Valid scores
-        NetworkRequest(identifiers=["test"], required_score=0)
-        NetworkRequest(identifiers=["test"], required_score=1000)
+        NetworkRequest(identifiers=["test"], required_score=0.0)
+        NetworkRequest(identifiers=["test"], required_score=1.0)
 
         # Invalid scores should fail
         with pytest.raises(ValidationError):
-            NetworkRequest(identifiers=["test"], required_score=-1)
+            NetworkRequest(identifiers=["test"], required_score=-0.1)
 
         with pytest.raises(ValidationError):
-            NetworkRequest(identifiers=["test"], required_score=1001)
+            NetworkRequest(identifiers=["test"], required_score=1.1)
 
     def test_enrichment_request_validation(self):
         """Test enrichment request validation."""
@@ -120,9 +120,9 @@ class TestRequestModelValidation:
     def test_ppi_enrichment_request_validation(self):
         """Test PPI enrichment request validation."""
         request = PPIEnrichmentRequest(
-            identifiers=["9606.ENSP00000269305", "9606.ENSP00000348554"], required_score=500
+            identifiers=["9606.ENSP00000269305", "9606.ENSP00000348554"], required_score=0.5
         )
-        assert request.required_score == 500
+        assert request.required_score == 0.5
         assert len(request.identifiers) == 2
 
     def test_request_string_representation(self):
@@ -135,7 +135,7 @@ class TestRequestModelValidation:
 
     def test_request_model_copy(self):
         """Test request model copying."""
-        original = NetworkRequest(identifiers=["test"], required_score=600)
+        original = NetworkRequest(identifiers=["test"], required_score=0.6)
         copied = original.model_copy()
 
         assert copied.identifiers == original.identifiers

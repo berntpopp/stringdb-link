@@ -59,8 +59,8 @@ class TestAdvancedRequestValidation:
         assert request.required_score == 0
 
         # Test maximum score
-        request = NetworkRequest(identifiers=["p53"], required_score=1000)
-        assert request.required_score == 1000
+        request = NetworkRequest(identifiers=["p53"], required_score=1.0)
+        assert request.required_score == 1.0
 
     def test_network_request_all_network_types(self):
         """Test network request with all network types."""
@@ -146,17 +146,17 @@ class TestResponseModelEdgeCases:
             preferred_name_a="TP53",
             preferred_name_b="MDM2",
             ncbi_taxon_id=9606,
-            score=1000,
-            nscore=1000,
-            fscore=1000,
-            pscore=1000,
-            ascore=1000,
-            escore=1000,
-            dscore=1000,
-            tscore=1000,
+            score=1.0,
+            nscore=1.0,
+            fscore=1.0,
+            pscore=1.0,
+            ascore=1.0,
+            escore=1.0,
+            dscore=1.0,
+            tscore=1.0,
         )
         assert all(
-            score == 1000
+            score == 1.0
             for score in [
                 interaction.score,
                 interaction.nscore,

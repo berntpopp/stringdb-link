@@ -383,7 +383,7 @@ class StringDBClient:
         Args:
             identifiers: List of protein identifiers
             species: NCBI taxon ID
-            required_score: Minimum confidence score (0-1000)
+            required_score: Minimum confidence score (0.0-1.0)
             network_type: Network type (functional or physical)
             add_nodes: Number of additional nodes to add
             show_query_node_labels: Use submitted names as labels
@@ -423,7 +423,7 @@ class StringDBClient:
             identifiers: List of protein identifiers
             species: NCBI taxon ID
             limit: Maximum number of partners per protein
-            required_score: Minimum confidence score (0-1000)
+            required_score: Minimum confidence score (0.0-1.0)
             network_type: Network type (functional or physical)
             output_format: Output format (json, tsv, xml, psi-mi)
 
@@ -532,7 +532,7 @@ class StringDBClient:
             add_white_nodes: Number of white nodes to add
             network_flavor: Network style (evidence, confidence, actions)
             network_type: Network type (functional or physical)
-            required_score: Minimum confidence score (0-1000)
+            required_score: Minimum confidence score (0.0-1.0)
             image_format: Image format (image, highres_image, svg)
 
         Returns:
@@ -668,7 +668,7 @@ class StringDBClient:
         Args:
             identifiers: List of protein identifiers
             species: NCBI taxon ID
-            required_score: Minimum confidence score (0-1000)
+            required_score: Minimum confidence score (0.0-1.0)
             background_string_identifiers: Background proteome identifiers
             output_format: Output format (json, tsv, xml, psi-mi)
 

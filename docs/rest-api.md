@@ -141,7 +141,7 @@ identifiers	required parameter for multiple items, e.g. DRD1_HUMAN%0dDRD2_HUMAN
 species	NCBI/STRING taxon (e.g. 9606 for human, or STRG0AXXXXX see: STRING organisms).
 add_color_nodes	adds color nodes based on scores to the input proteins
 add_white_nodes	adds white nodes based on scores to the input proteins (added after color nodes)
-required_score	threshold of significance to include an interaction, a number between 0 and 1000 (default depends on the network)
+required_score	threshold of significance to include an interaction, a number between 0.0 and 1.0 (default depends on the network)
 network_type	network type: functional (default), physical
 caller_identity	your identifier for us.
 Visual
@@ -245,7 +245,7 @@ identifiers	required parameter for multiple items, e.g. DRD1_HUMAN%0dDRD2_HUMAN
 species	NCBI/STRING taxon (e.g. 9606 for human, or STRG0AXXXXX see: STRING organisms).
 add_color_nodes	adds color nodes based on scores to the input proteins
 add_white_nodes	adds white nodes based on scores to the input proteins (added after color nodes)
-required_score	threshold of significance to include an interaction, a number between 0 and 1000 (default depends on the network)
+required_score	threshold of significance to include an interaction, a number between 0.0 and 1.0 (default depends on the network)
 network_flavor	the style of edges in the network: evidence (default), confidence, actions
 network_type	network type: functional (default), physical
 hide_node_labels	hides all protein names from the picture (0 or 1) (defailt:0)
@@ -271,7 +271,7 @@ identifiers	required parameter for multiple items, e.g. DRD1_HUMAN%0dDRD2_HUMAN
 species	NCBI/STRING taxon (e.g. 9606 for human, or STRG0AXXXXX see: STRING organisms).
 add_color_nodes	adds color nodes based on scores to the input proteins
 add_white_nodes	adds white nodes based on scores to the input proteins (added after color nodes)
-required_score	threshold of significance to include an interaction, a number between 0 and 1000 (default depends on the network)
+required_score	threshold of significance to include an interaction, a number between 0.0 and 1.0 (default depends on the network)
 network_flavor	the style of edges in the network: evidence (default), confidence, actions
 network_type	network type: functional (default), physical
 hide_node_labels	hides all protein names from the picture (0 or 1) (defailt:0)
@@ -304,7 +304,7 @@ identifiers	required parameter - array of protein names e.g. ['TP53', 'CDK2']
 species	NCBI/STRING taxon (e.g. 9606 for human, or STRG0AXXXXX see: STRING organisms).
 add_color_nodes	adds color nodes based on scores to the input proteins
 add_white_nodes	adds white nodes based on scores to the input proteins (added after color nodes)
-required_score	threshold of significance to include an interaction, a number between 0 and 1000 (default depends on the network)
+required_score	threshold of significance to include an interaction, a number between 0.0 and 1.0 (default depends on the network)
 network_flavor	the style of edges in the network: evidence (default), confidence, actions
 network_type	network type: functional (default), physical
 hide_node_labels	hides all protein names from the picture (0 or 1) (defailt:0)
@@ -404,7 +404,7 @@ Available parameters:
 Parameter	Description
 identifiers	required parameter for multiple items, e.g. DRD1_HUMAN%0dDRD2_HUMAN
 species	NCBI/STRING taxon (e.g. 9606 for human, or STRG0AXXXXX see: STRING organisms).
-required_score	threshold of significance to include a interaction, a number between 0 and 1000 (default depends on the network)
+required_score	threshold of significance to include a interaction, a number between 0.0 and 1.0 (default depends on the network)
 network_type	network type: functional (default), physical
 add_nodes	adds a number of proteins with to the network based on their confidence score
 show_query_node_labels	when available use submitted names in the preferredName column when (0 or 1) (default:0)
@@ -505,7 +505,7 @@ Parameter	Description
 identifiers	required parameter for multiple items, e.g. DRD1_HUMAN%0dDRD2_HUMAN
 species	NCBI/STRING taxon (e.g. 9606 for human, or STRG0AXXXXX see: STRING organisms).
 limit	limits the number of interaction partners retrieved per protein (most confident interactions come first)
-required_score	threshold of significance to include a interaction, a number between 0 and 1000 (default depends on the network)
+required_score	threshold of significance to include a interaction, a number between 0.0 and 1.0 (default depends on the network)
 network_type	network type: functional (default), physical
 caller_identity	your identifier for us.
 Output fields (TSV and JSON formats):
@@ -909,7 +909,7 @@ Available parameters:
 Parameter	Description
 identifiers	required parameter for multiple items, e.g. DRD1_HUMAN%0dDRD2_HUMAN
 species	NCBI/STRING taxon (e.g. 9606 for human, or STRG0AXXXXX see: STRING organisms).
-required_score	threshold of significance to include a interaction, a number between 0 and 1000 (default depends on the network)
+required_score	threshold of significance to include a interaction, a number between 0.0 and 1.0 (default depends on the network)
 background_string_identifiers	using this parameter you can specify the background proteome of your experiment. Only STRING identifiers will be recognised (each must be seperated by "%0d") e.g. '7227.FBpp0077451%0d7227.FBpp0074373'. You can map STRING identifiers using mapping identifiers method.
 caller_identity	your identifier for us.
 Output fields:
