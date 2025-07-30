@@ -1,0 +1,37 @@
+# Development docker-compose with hot-reloading
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+services:
+  stringdb-link:
+    # Build a development image with volume mounts
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: builder
+    
+    # Override environment for development
+    environment:
+      STRINGDB_LINK_LOG_LEVEL: DEBUG
+      PYTHONPATH: /home/app/web
+    
+    # Volume mounts for hot-reloading
+    volumes:
+      - ../stringdb_link:/home/app/web/stringdb_link:delegated
+      - ../server.py:/home/app/web/server.py:ro
+      - ../mcp_server.py:/home/app/web/mcp_server.py:ro
+      - ../pyproject.toml:/home/app/web/pyproject.toml:ro
+      - ../README.md:/home/app/web/README.md:ro
+    
+    # Development command with auto-reload
+    command: >
+      sh -c "
+        cd /home/app/web &&
+        pip install -e . &&
+        uvicorn stringdb_link.app:app --host 0.0.0.0 --port 8000 --reload --reload-dir stringdb_link
+      "
+    
+    # Override user to root for development (to avoid permission issues)
+    user: root
+    
+    # Working directory
+    working_dir: /home/app/web

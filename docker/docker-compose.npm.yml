@@ -1,0 +1,60 @@
+# NPM (Nginx Proxy Manager) production deployment
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.npm.yml up -d
+
+services:
+  stringdb-link:
+    # Production environment optimized for NPM
+    environment:
+      STRINGDB_LINK_LOG_LEVEL: INFO
+      STRINGDB_LINK_LOG_FORMAT: json
+      STRINGDB_LINK_RELOAD: "false"
+      GUNICORN_WORKERS: 4
+      GUNICORN_LOG_LEVEL: warning
+      
+      # NPM-specific environment variables (loaded from .env.npm)
+      STRINGDB_LINK_PUBLIC_DOMAIN: "${STRINGDB_LINK_PUBLIC_DOMAIN}"
+      STRINGDB_LINK_PUBLIC_URL: "${STRINGDB_LINK_PUBLIC_URL}"
+      STRINGDB_LINK_CORS_ORIGINS: "${STRINGDB_LINK_CORS_ORIGINS}"
+    
+    # Remove port mapping - NPM handles external access
+    ports: []
+    
+    # Connect to NPM's shared network
+    networks:
+      - npm_shared
+      - default
+    
+    # Production command with Gunicorn
+    command: ["gunicorn", "-c", "gunicorn_conf.py", "stringdb_link.app:app"]
+    
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    
+    # Production health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    
+    # Production logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=stringdb-link,environment=production,proxy=npm"
+
+# NPM shared network configuration
+networks:
+  npm_shared:
+    external: true
+    name: "${NPM_SHARED_NETWORK_NAME:-npm_default}"

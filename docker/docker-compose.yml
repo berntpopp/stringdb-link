@@ -1,0 +1,53 @@
+services:
+  stringdb-link:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: production
+    
+    container_name: stringdb_link_server
+    
+    # Environment configuration
+    env_file:
+      - ../.env
+    
+    environment:
+      # Development overrides
+      STRINGDB_LINK_LOG_LEVEL: DEBUG
+      STRINGDB_LINK_HOST: 0.0.0.0
+      STRINGDB_LINK_PORT: 8000
+      STRINGDB_LINK_RELOAD: "false"  # Disable reload in container
+    
+    # Port mapping
+    ports:
+      - "${STRINGDB_LINK_PORT:-8000}:8000"
+    
+    # Use the default production command for simplicity
+    # For development with code changes, rebuild the container
+    command: ["uvicorn", "stringdb_link.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Resource limits for development
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

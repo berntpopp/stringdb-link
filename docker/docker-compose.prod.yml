@@ -1,0 +1,51 @@
+# Production docker-compose override
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  stringdb-link:
+    # Production-specific environment variables
+    environment:
+      STRINGDB_LINK_LOG_LEVEL: INFO
+      STRINGDB_LINK_LOG_FORMAT: json
+      STRINGDB_LINK_RELOAD: "false"
+      GUNICORN_WORKERS: 4
+      GUNICORN_LOG_LEVEL: warning
+    
+    # Remove development volume mounts
+    volumes: []
+    
+    # Use the default production command (Gunicorn)
+    command: ["gunicorn", "-c", "gunicorn_conf.py", "stringdb_link.app:app"]
+    
+    # Production resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+      
+      # Production restart policy
+      restart_policy:
+        condition: any
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    
+    # Enhanced health check for production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    
+    # Production logging with rotation
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service=stringdb-link,environment=production"
