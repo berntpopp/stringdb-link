@@ -1,0 +1,340 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stringdb-link"
+version = "0.1.0"
+description = "High-performance unified API server for STRING protein-protein interaction database with MCP integration"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "StringDB-Link Development Team", email = "dev@stringdb-link.org"}
+]
+maintainers = [
+    {name = "StringDB-Link Development Team", email = "dev@stringdb-link.org"}
+]
+keywords = [
+    "string", "proteins", "interactions", "bioinformatics", "api", "mcp", 
+    "stringdb", "protein-protein", "networks", "enrichment", "research"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+requires-python = ">=3.9"
+dependencies = [
+    # Web framework and API
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.2.0",
+    
+    # HTTP client and networking
+    "httpx>=0.27.0",
+    
+    # MCP integration
+    "mcp>=1.0.0",
+    "fastmcp>=0.2.0",
+    
+    # Caching and performance
+    "async-lru>=2.0.4",
+    
+    # Logging and monitoring
+    "structlog>=24.1.0",
+    "orjson>=3.10.0",
+    
+    # CLI interface
+    "typer>=0.12.0",
+    "rich>=13.7.0",
+    
+    # Utilities
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.14.0",
+    "httpx>=0.27.0",  # For testing
+    
+    # Code quality
+    "ruff>=0.4.0",
+    "black>=24.0.0",
+    "flake8>=7.0.0",
+    "mypy>=1.10.0",
+    "pre-commit>=3.7.0",
+    
+    # Security
+    "bandit>=1.7.0",
+    
+    # Documentation
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.25.0",
+]
+
+production = [
+    # Production WSGI server
+    "gunicorn>=22.0.0",
+    
+    # Production monitoring
+    "prometheus-client>=0.20.0",
+    "opentelemetry-api>=1.20.0",
+    "opentelemetry-sdk>=1.20.0",
+    "opentelemetry-instrumentation-fastapi>=0.41b0",
+]
+
+all = [
+    "stringdb-link[dev,production]"
+]
+
+[project.urls]
+Homepage = "https://github.com/stringdb-link/stringdb-link"
+Documentation = "https://stringdb-link.readthedocs.io"
+Repository = "https://github.com/stringdb-link/stringdb-link"
+"Bug Tracker" = "https://github.com/stringdb-link/stringdb-link/issues"
+Changelog = "https://github.com/stringdb-link/stringdb-link/blob/main/CHANGELOG.md"
+
+[project.scripts]
+stringdb-link = "stringdb_link.cli:main"
+stringdb-mcp = "mcp_server:main"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["stringdb_link*"]
+exclude = ["tests*", "docs*"]
+
+[tool.setuptools.package-data]
+stringdb_link = ["py.typed"]
+
+# Ruff configuration (linting and formatting)
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "D",      # pydocstyle
+    "UP",     # pyupgrade
+    "YTT",    # flake8-2020
+    "ANN",    # flake8-annotations
+    "ASYNC",  # flake8-async
+    "S",      # flake8-bandit
+    "BLE",    # flake8-blind-except
+    "FBT",    # flake8-boolean-trap
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "COM",    # flake8-commas
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez
+    "T10",    # flake8-debugger
+    "EM",     # flake8-errmsg
+    "EXE",    # flake8-executable
+    "FA",     # flake8-future-annotations
+    "ISC",    # flake8-implicit-str-concat
+    "ICN",    # flake8-import-conventions
+    "G",      # flake8-logging-format
+    "INP",    # flake8-no-pep420
+    "PIE",    # flake8-pie
+    "T20",    # flake8-print
+    "PYI",    # flake8-pyi
+    "PT",     # flake8-pytest-style
+    "Q",      # flake8-quotes
+    "RSE",    # flake8-raise
+    "RET",    # flake8-return
+    "SLF",    # flake8-self
+    "SLOT",   # flake8-slots
+    "SIM",    # flake8-simplify
+    "TID",    # flake8-tidy-imports
+    "TCH",    # flake8-type-checking
+    "INT",    # flake8-gettext
+    "ARG",    # flake8-unused-arguments
+    "PTH",    # flake8-use-pathlib
+    "TD",     # flake8-todos
+    "FIX",    # flake8-fixme
+    "ERA",    # eradicate
+    "PGH",    # pygrep-hooks
+    "PL",     # pylint
+    "TRY",    # tryceratops
+    "FLY",    # flynt
+    "NPY",    # numpy
+    "PERF",   # perflint
+    "FURB",   # refurb
+    "LOG",    # flake8-logging
+    "RUF",    # ruff-specific rules
+]
+
+ignore = [
+    "D100",   # Missing docstring in public module
+    "D104",   # Missing docstring in public package
+    "D203",   # 1 blank line required before class docstring
+    "D213",   # Multi-line docstring summary should start at the second line
+    "ANN101", # Missing type annotation for self in method
+    "ANN102", # Missing type annotation for cls in classmethod
+    "ANN401", # Dynamically typed expressions (Any) are disallowed
+    "S101",   # Use of assert detected
+    "PLR0913", # Too many arguments to function call
+    "PLR0911", # Too many return statements
+    "PLR0912", # Too many branches
+    "PLR0915", # Too many statements
+    "C901",   # Too complex
+    "COM812", # Trailing comma missing (conflicts with formatter)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "D",      # Don't check docstrings in tests
+    "S",      # Don't check security in tests
+    "PLR",    # Don't check complexity in tests
+    "ANN",    # Don't require annotations in tests
+    "T20",    # Allow print statements in tests
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+force-single-line = false
+force-sort-within-sections = true
+single-line-exclusions = ["typing", "collections.abc"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# MyPy configuration (type checking)
+[tool.mypy]
+python_version = "3.9"
+strict = true
+warn_unreachable = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+show_error_codes = true
+show_column_numbers = true
+pretty = true
+
+# Allow untyped calls for these libraries
+[[tool.mypy.overrides]]
+module = [
+    "uvicorn.*",
+    "fastmcp.*",
+    "mcp.*",
+    "async_lru.*",
+    "orjson.*",
+    "structlog.*",
+    "rich.*",
+    "typer.*",
+]
+ignore_missing_imports = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=stringdb_link",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+    "--cov-fail-under=90",
+]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "api: marks tests that require API access",
+    "mcp: marks tests that test MCP functionality",
+]
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning:httpx.*",
+    "ignore::DeprecationWarning:fastmcp.*",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["stringdb_link"]
+omit = [
+    "tests/*",
+    "stringdb_link/__main__.py",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+show_missing = true
+skip_covered = false
+skip_empty = false
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+# Black formatting configuration (ruff format is preferred)
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311", "py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+# Bandit security configuration
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101"]  # Skip assert used in tests
