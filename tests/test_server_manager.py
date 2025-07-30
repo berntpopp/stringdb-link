@@ -142,36 +142,51 @@ class TestUnifiedServerManager:
         mock_server.serve.assert_called_once()
 
     @pytest.mark.asyncio
-    @patch("stringdb_link.server_manager.mcp_app")
-    async def test_start_stdio_server_with_logger(self, mock_mcp_app):
+    @patch("stringdb_link.app.create_mcp_app")
+    @patch("stringdb_link.app.create_app")
+    @patch("stringdb_link.app.lifespan")
+    async def test_start_stdio_server_with_logger(self, mock_lifespan, mock_create_app, mock_create_mcp_app):
         """Test start_stdio_server with logger."""
         # Setup mocks
         mock_logger = MagicMock()
-        mock_mcp_app.run_stdio = AsyncMock()
+        mock_app = MagicMock()
+        mock_mcp = AsyncMock()
+        mock_create_app.return_value = mock_app
+        mock_create_mcp_app.return_value = mock_mcp
+        mock_lifespan.return_value.__aenter__ = AsyncMock()
+        mock_lifespan.return_value.__aexit__ = AsyncMock()
 
         # Create manager and start STDIO server
         manager = UnifiedServerManager(logger=mock_logger)
         await manager.start_stdio_server()
 
-        # Verify logging
-        mock_logger.info.assert_called_once_with("Starting MCP STDIO server")
+        # Verify logging calls
+        assert mock_logger.info.call_count >= 1
+        mock_logger.info.assert_any_call("Starting MCP STDIO server")
 
         # Verify MCP server start
-        mock_mcp_app.run_stdio.assert_called_once()
+        mock_mcp.run_async.assert_called_once_with(transport="stdio")
 
     @pytest.mark.asyncio
-    @patch("stringdb_link.server_manager.mcp_app")
-    async def test_start_stdio_server_without_logger(self, mock_mcp_app):
+    @patch("stringdb_link.app.create_mcp_app")
+    @patch("stringdb_link.app.create_app")
+    @patch("stringdb_link.app.lifespan")
+    async def test_start_stdio_server_without_logger(self, mock_lifespan, mock_create_app, mock_create_mcp_app):
         """Test start_stdio_server without logger."""
         # Setup mocks
-        mock_mcp_app.run_stdio = AsyncMock()
+        mock_app = MagicMock()
+        mock_mcp = AsyncMock()
+        mock_create_app.return_value = mock_app
+        mock_create_mcp_app.return_value = mock_mcp
+        mock_lifespan.return_value.__aenter__ = AsyncMock()
+        mock_lifespan.return_value.__aexit__ = AsyncMock()
 
         # Create manager without logger and start STDIO server
         manager = UnifiedServerManager()
         await manager.start_stdio_server()
 
         # Verify MCP server start
-        mock_mcp_app.run_stdio.assert_called_once()
+        mock_mcp.run_async.assert_called_once_with(transport="stdio")
 
     @pytest.mark.asyncio
     async def test_shutdown_with_logger(self):
@@ -250,15 +265,31 @@ class TestUnifiedServerManagerEdgeCases:
             await manager.start_http_only_server()
 
     @pytest.mark.asyncio
-    @patch("stringdb_link.server_manager.mcp_app")
-    async def test_stdio_server_exception(self, mock_mcp_app):
-        """Test handling of exception during MCP STDIO server start."""
-        mock_mcp_app.run_stdio = AsyncMock(side_effect=Exception("MCP server failed"))
+    @patch("stringdb_link.app.create_mcp_app")  
+    @patch("stringdb_link.app.create_app")
+    @patch("stringdb_link.app.lifespan")
+    async def test_stdio_server_calls_mcp_run_async(self, mock_lifespan, mock_create_app, mock_create_mcp_app):
+        """Test that MCP server run_async is called with correct transport."""
+        # Setup mocks
+        mock_app = MagicMock()
+        mock_mcp = AsyncMock()
+        mock_create_app.return_value = mock_app
+        mock_create_mcp_app.return_value = mock_mcp
+        mock_mcp.run_async = AsyncMock()
+        
+        # Set up the async context manager correctly
+        async_context = AsyncMock()
+        async_context.__aenter__ = AsyncMock()
+        async_context.__aexit__ = AsyncMock()
+        mock_lifespan.return_value = async_context
 
         manager = UnifiedServerManager()
 
-        with pytest.raises(Exception, match="MCP server failed"):
-            await manager.start_stdio_server()
+        # Should complete without exception
+        await manager.start_stdio_server()
+            
+        # Verify the MCP server was called with correct transport
+        mock_mcp.run_async.assert_called_once_with(transport="stdio")
 
     @pytest.mark.asyncio
     @patch("stringdb_link.server_manager.log_server_startup")

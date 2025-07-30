@@ -89,16 +89,28 @@ class UnifiedServerManager:
         await server.serve()
 
     async def start_stdio_server(self) -> None:
-        """Start MCP server in STDIO mode.
-
-        This mode is used for Claude Desktop integration where communication
-        happens over stdin/stdout.
-        """
+        """Start STDIO MCP server (following litvar-link pattern)."""
         if self.logger:
             self.logger.info("Starting MCP STDIO server")
 
-        # Run the MCP server in STDIO mode
-        await mcp_app.run_stdio()
+        # Create FastAPI app (for MCP introspection)
+        from .app import create_app, create_mcp_app, lifespan
+
+        app = create_app()
+
+        # Use lifespan context manager for consistency with HTTP mode
+        if self.logger:
+            self.logger.info("Initializing app state using lifespan context...")
+
+        async with lifespan(app):
+            # Create MCP server within the lifespan context
+            mcp = create_mcp_app()
+
+            if self.logger:
+                self.logger.info("STDIO MCP server ready")
+
+            # Run MCP server in STDIO mode
+            await mcp.run_async(transport="stdio")
 
     async def shutdown(self) -> None:
         """Shutdown the server gracefully."""
