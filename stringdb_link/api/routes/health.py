@@ -67,5 +67,3 @@ async def version_info() -> dict[str, Any]:
         "api_version": "v1",
         "stringdb_api": settings.stringdb_base_url,
     }
-
-

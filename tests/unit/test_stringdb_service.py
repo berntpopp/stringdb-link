@@ -1,4 +1,5 @@
 """Comprehensive tests for StringDBService."""
+
 # ruff: noqa: SLF001  # Private member access is needed for testing internal methods
 
 from unittest.mock import AsyncMock, MagicMock
@@ -456,7 +457,9 @@ class TestStringDBServiceErrorHandling:
     async def test_network_interactions_with_validation_error(self, service, mock_client):
         """Test network interactions with validation error."""
         # Arrange
-        request = NetworkRequest(identifiers=["9606.ENSP00000269305"], species=9606, required_score=0.4)
+        request = NetworkRequest(
+            identifiers=["9606.ENSP00000269305"], species=9606, required_score=0.4
+        )
         mock_client.get_network_interactions.side_effect = ValueError("Validation failed")
 
         # Act & Assert - Should raise StringDBServiceError

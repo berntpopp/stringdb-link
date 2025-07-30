@@ -91,6 +91,7 @@ class TestCacheManager:
 
     async def test_get_stats(self, cache_mgr):
         """Test cache statistics retrieval."""
+
         # Arrange
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="stats_test")
         async def test_function(arg):
@@ -113,6 +114,7 @@ class TestCacheManager:
 
     async def test_get_stats_specific_cache(self, cache_mgr):
         """Test getting stats for a specific cache."""
+
         # Arrange
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="specific_test")
         async def test_function(arg):
@@ -128,6 +130,7 @@ class TestCacheManager:
 
     async def test_clear_all_caches(self, cache_mgr):
         """Test clearing all caches."""
+
         # Arrange
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="clear_test")
         async def test_function(arg):
@@ -200,6 +203,7 @@ class TestCacheManager:
 
     async def test_log_cache_summary(self, cache_mgr, mock_logger):
         """Test logging cache summary."""
+
         # Arrange
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="summary_test")
         async def test_function(arg):
@@ -221,6 +225,7 @@ class TestCacheManager:
 
     async def test_cache_function_attributes(self, cache_mgr):
         """Test that cached functions have proper attributes."""
+
         # Arrange
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="attr_test")
         async def test_function(arg):
@@ -321,6 +326,7 @@ class TestCacheManagerEdgeCases:
 
     async def test_cache_name_generation(self, cache_mgr):
         """Test automatic cache name generation."""
+
         # Arrange
         @cache_mgr.cached(maxsize=10, ttl=300)  # No cache_name provided
         async def test_function_no_name(arg):
@@ -336,6 +342,7 @@ class TestCacheManagerEdgeCases:
 
     async def test_multiple_caches(self, cache_mgr):
         """Test multiple independent caches."""
+
         # Arrange
         @cache_mgr.cached(maxsize=10, ttl=300, cache_name="cache1")
         async def function1(arg):

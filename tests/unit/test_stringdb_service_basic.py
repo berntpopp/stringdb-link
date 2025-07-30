@@ -1,4 +1,5 @@
 """Basic tests for StringDBService focusing on core functionality."""
+
 # ruff: noqa: ARG002,SLF001  # Unused method arguments are pytest fixtures, private member access is for testing
 
 from unittest.mock import AsyncMock, MagicMock, patch

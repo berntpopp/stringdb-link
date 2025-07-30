@@ -142,5 +142,6 @@ try:
     mcp_app = create_mcp_app()
 except Exception as e:
     import warnings
+
     warnings.warn(f"MCP app creation failed: {e}", UserWarning)
     mcp_app = None

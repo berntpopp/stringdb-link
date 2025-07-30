@@ -107,7 +107,6 @@ class StringDBService:
                 "Error resolving identifiers",
                 error=str(e),
                 identifiers=request.identifiers,
-
             )
             msg = f"Failed to resolve identifiers: {e}"
             raise StringDBServiceError(msg) from e
@@ -181,7 +180,6 @@ class StringDBService:
                 "Error getting network interactions",
                 error=str(e),
                 identifiers=request.identifiers,
-
             )
             msg = f"Failed to get network interactions: {e}"
             raise StringDBServiceError(msg) from e
@@ -260,7 +258,6 @@ class StringDBService:
                 "Error getting interaction partners",
                 error=str(e),
                 identifiers=request.identifiers,
-
             )
             msg = f"Failed to get interaction partners: {e}"
             raise StringDBServiceError(msg) from e
@@ -336,7 +333,6 @@ class StringDBService:
                 "Error getting functional enrichment",
                 error=str(e),
                 identifiers=request.identifiers,
-
             )
             msg = f"Failed to get functional enrichment: {e}"
             raise StringDBServiceError(msg) from e
@@ -409,7 +405,6 @@ class StringDBService:
                 "Error getting functional annotations",
                 error=str(e),
                 identifiers=request.identifiers,
-
             )
             msg = f"Failed to get functional annotations: {e}"
             raise StringDBServiceError(msg) from e
@@ -484,7 +479,6 @@ class StringDBService:
                 "Error generating network image",
                 error=str(e),
                 identifiers=request.identifiers,
-
             )
             msg = f"Failed to generate network image: {e}"
             raise StringDBServiceError(msg) from e
@@ -592,7 +586,6 @@ class StringDBService:
                 error=str(e),
                 identifiers=identifiers,
                 species=species,
-
             )
             msg = f"Failed to get homology scores: {e}"
             raise StringDBServiceError(msg) from e
@@ -656,7 +649,6 @@ class StringDBService:
                 identifiers=identifiers,
                 species=species,
                 species_b=species_b,
-
             )
             msg = f"Failed to get homology best hits: {e}"
             raise StringDBServiceError(msg) from e
@@ -705,7 +697,6 @@ class StringDBService:
                 error=str(e),
                 identifiers=request.identifiers,
                 species=request.species,
-
             )
             msg = f"Failed to get PPI enrichment: {e}"
             raise StringDBServiceError(msg) from e
@@ -766,7 +757,6 @@ class StringDBService:
                 error=str(e),
                 identifiers=request.identifiers,
                 species=request.species,
-
             )
             msg = f"Failed to get network link: {e}"
             raise StringDBServiceError(msg) from e

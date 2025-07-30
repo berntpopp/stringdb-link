@@ -1,4 +1,5 @@
 """Comprehensive tests for API route error handling."""
+
 # ruff: noqa: ARG002  # Unused method arguments are pytest fixtures
 
 from unittest.mock import AsyncMock, MagicMock
@@ -59,8 +60,7 @@ class TestIdentifierRouteErrorHandling:
 
         # Act: Make the request
         response = client.post(
-            "/api/identifiers/resolve",
-            json={"identifiers": ["p53"], "species": 9606}
+            "/api/identifiers/resolve", json={"identifiers": ["p53"], "species": 9606}
         )
 
         # Assert: Check the status code and response detail
@@ -101,12 +101,11 @@ class TestIdentifierRouteErrorHandling:
         if not isinstance(exception, Exception) or expected_status >= 500:
             mock_logger.exception.assert_called_once()
 
-    def test_resolve_single_identifier_not_found(
-        self, client, mock_service, mock_logger
-    ):
+    def test_resolve_single_identifier_not_found(self, client, mock_service, mock_logger):
         """Test resolve_single_identifier when no mapping is found."""
         # Arrange: Mock service to return empty mappings
         from stringdb_link.models.responses import StringIdMappingListResponse
+
         mock_service.resolve_identifiers.return_value = StringIdMappingListResponse(
             mappings=[], total_count=0
         )
@@ -123,9 +122,7 @@ class TestIdentifierRouteErrorHandling:
 class TestHealthRouteErrorHandling:
     """Test error handling in health routes."""
 
-    def test_health_check_service_error(
-        self, client, mock_service
-    ):
+    def test_health_check_service_error(self, client, mock_service):
         """Test health check with service error."""
         # Mock a service error
         mock_service.get_cache_stats.side_effect = Exception("Service unavailable")
@@ -144,7 +141,10 @@ class TestEnrichmentRouteErrorHandling:
     @pytest.mark.parametrize(
         ("exception", "expected_status"),
         [
-            (StringDBServiceError("Enrichment service down", operation="functional_enrichment"), 500),
+            (
+                StringDBServiceError("Enrichment service down", operation="functional_enrichment"),
+                500,
+            ),
             (ValidationError("Invalid identifiers", field="identifiers"), 400),
             (Exception("Generic enrichment error"), 500),
         ],
@@ -159,7 +159,7 @@ class TestEnrichmentRouteErrorHandling:
         # Act: Make the request
         response = client.post(
             "/api/enrichment/functional",
-            json={"identifiers": ["9606.ENSP00000269305"], "species": 9606}
+            json={"identifiers": ["9606.ENSP00000269305"], "species": 9606},
         )
 
         # Assert: Check the status code and response detail
@@ -185,7 +185,7 @@ class TestEnrichmentRouteErrorHandling:
         # Act: Make the request
         response = client.post(
             "/api/enrichment/ppi",
-            json={"identifiers": ["9606.ENSP00000269305", "9606.ENSP00000270142"], "species": 9606}
+            json={"identifiers": ["9606.ENSP00000269305", "9606.ENSP00000270142"], "species": 9606},
         )
 
         # Assert: Check the status code and response detail
@@ -215,7 +215,7 @@ class TestNetworkRouteErrorHandling:
         # Act: Make the request
         response = client.post(
             "/api/networks/interactions",
-            json={"identifiers": ["9606.ENSP00000269305"], "species": 9606}
+            json={"identifiers": ["9606.ENSP00000269305"], "species": 9606},
         )
 
         # Assert: Check the status code and response detail
@@ -241,7 +241,7 @@ class TestNetworkRouteErrorHandling:
         # Act: Make the request
         response = client.post(
             "/api/networks/partners",
-            json={"identifiers": ["9606.ENSP00000269305"], "species": 9606, "limit": 10}
+            json={"identifiers": ["9606.ENSP00000269305"], "species": 9606, "limit": 10},
         )
 
         # Assert: Check the status code and response detail
@@ -270,8 +270,7 @@ class TestHomologyRouteErrorHandling:
 
         # Act: Make the request
         response = client.post(
-            "/api/homology/scores",
-            json={"identifiers": ["9606.ENSP00000269305"], "species": 9606}
+            "/api/homology/scores", json={"identifiers": ["9606.ENSP00000269305"], "species": 9606}
         )
 
         # Assert: Check the status code and response detail
@@ -297,7 +296,7 @@ class TestHomologyRouteErrorHandling:
         # Act: Make the request
         response = client.post(
             "/api/homology/best-hits",
-            json={"identifiers": ["9606.ENSP00000269305"], "species": 9606, "species_b": [10090]}
+            json={"identifiers": ["9606.ENSP00000269305"], "species": 9606, "species_b": [10090]},
         )
 
         # Assert: Check the status code and response detail
@@ -326,8 +325,7 @@ class TestImageRouteErrorHandling:
 
         # Act: Make the request
         response = client.post(
-            "/api/images/network",
-            json={"identifiers": ["9606.ENSP00000269305"], "species": 9606}
+            "/api/images/network", json={"identifiers": ["9606.ENSP00000269305"], "species": 9606}
         )
 
         # Assert: Check the status code and response detail
@@ -342,7 +340,10 @@ class TestAnnotationRouteErrorHandling:
     @pytest.mark.parametrize(
         ("exception", "expected_status"),
         [
-            (StringDBServiceError("Annotation service error", operation="functional_annotation"), 500),
+            (
+                StringDBServiceError("Annotation service error", operation="functional_annotation"),
+                500,
+            ),
             (ValidationError("Invalid annotation request", field="identifiers"), 400),
             (Exception("Generic annotation error"), 500),
         ],
@@ -357,7 +358,7 @@ class TestAnnotationRouteErrorHandling:
         # Act: Make the request
         response = client.post(
             "/api/annotations/functional",
-            json={"identifiers": ["9606.ENSP00000269305"], "species": 9606}
+            json={"identifiers": ["9606.ENSP00000269305"], "species": 9606},
         )
 
         # Assert: Check the status code and response detail
@@ -369,45 +370,28 @@ class TestAnnotationRouteErrorHandling:
 class TestRouteExceptionSpecifics:
     """Test specific exception handling behaviors."""
 
-    def test_stringdb_service_error_with_status_code(
-        self, client, mock_service, mock_logger
-    ):
+    def test_stringdb_service_error_with_status_code(self, client, mock_service, mock_logger):
         """Test StringDBServiceError with specific status code."""
         # Arrange
-        error = StringDBServiceError(
-            "Service unavailable",
-            operation="resolve_identifiers"
-        )
+        error = StringDBServiceError("Service unavailable", operation="resolve_identifiers")
         mock_service.resolve_identifiers.side_effect = error
 
         # Act
-        response = client.post(
-            "/api/identifiers/resolve",
-            json={"identifiers": ["p53"]}
-        )
+        response = client.post("/api/identifiers/resolve", json={"identifiers": ["p53"]})
 
         # Assert
         assert response.status_code == 500
         response_data = response.json()
         assert "Service error: Service unavailable" in response_data["detail"]
 
-    def test_validation_error_with_field_info(
-        self, client, mock_service, mock_logger
-    ):
+    def test_validation_error_with_field_info(self, client, mock_service, mock_logger):
         """Test ValidationError with field information."""
         # Arrange
-        error = ValidationError(
-            "Identifier list cannot be empty",
-            field="identifiers",
-            value=[]
-        )
+        error = ValidationError("Identifier list cannot be empty", field="identifiers", value=[])
         mock_service.resolve_identifiers.side_effect = error
 
         # Act
-        response = client.post(
-            "/api/identifiers/resolve",
-            json={"identifiers": ["p53"]}
-        )
+        response = client.post("/api/identifiers/resolve", json={"identifiers": ["p53"]})
 
         # Assert
         assert response.status_code == 400
@@ -420,18 +404,13 @@ class TestRouteExceptionSpecifics:
         assert "field" in call_args[1]
         assert call_args[1]["field"] == "identifiers"
 
-    def test_logger_exception_calls(
-        self, client, mock_service, mock_logger
-    ):
+    def test_logger_exception_calls(self, client, mock_service, mock_logger):
         """Test that logger.exception is called with appropriate context."""
         # Arrange
         mock_service.resolve_identifiers.side_effect = Exception("Test error")
 
         # Act
-        response = client.post(
-            "/api/identifiers/resolve",
-            json={"identifiers": ["p53"]}
-        )
+        response = client.post("/api/identifiers/resolve", json={"identifiers": ["p53"]})
 
         # Assert
         assert response.status_code == 500
@@ -446,15 +425,21 @@ class TestRouteExceptionSpecifics:
 class TestErrorResponseFormats:
     """Test that error responses have correct format."""
 
-    def test_error_response_contains_detail(
-        self, client, mock_service
-    ):
+    def test_error_response_contains_detail(self, client, mock_service):
         """Test that all error responses contain a 'detail' field."""
         # Test various endpoints with errors
         test_cases = [
             ("POST", "/api/identifiers/resolve", {"identifiers": ["p53"]}),
-            ("POST", "/api/enrichment/functional", {"identifiers": ["9606.ENSP00000269305"], "species": 9606}),
-            ("POST", "/api/networks/interactions", {"identifiers": ["9606.ENSP00000269305"], "species": 9606}),
+            (
+                "POST",
+                "/api/enrichment/functional",
+                {"identifiers": ["9606.ENSP00000269305"], "species": 9606},
+            ),
+            (
+                "POST",
+                "/api/networks/interactions",
+                {"identifiers": ["9606.ENSP00000269305"], "species": 9606},
+            ),
         ]
 
         for method, endpoint, json_data in test_cases:

@@ -1,4 +1,5 @@
 """Comprehensive tests for server manager functionality."""
+
 # ruff: noqa: ARG002  # Unused method arguments are pytest fixtures
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -31,8 +32,9 @@ class TestUnifiedServerManager:
     @patch("stringdb_link.server_manager.app")
     @patch("stringdb_link.server_manager.mcp_app")
     @patch("stringdb_link.server_manager.settings")
-    async def test_start_unified_server_with_logger(self, mock_settings, mock_mcp_app,
-                                                    mock_app, mock_log_startup, mock_server_class):
+    async def test_start_unified_server_with_logger(
+        self, mock_settings, mock_mcp_app, mock_app, mock_log_startup, mock_server_class
+    ):
         """Test start_unified_server with logger."""
         # Setup mocks
         mock_logger = MagicMock()
@@ -69,8 +71,9 @@ class TestUnifiedServerManager:
     @patch("stringdb_link.server_manager.app")
     @patch("stringdb_link.server_manager.mcp_app")
     @patch("stringdb_link.server_manager.settings")
-    async def test_start_unified_server_without_logger(self, mock_settings, mock_mcp_app,
-                                                       mock_app, mock_server_class):
+    async def test_start_unified_server_without_logger(
+        self, mock_settings, mock_mcp_app, mock_app, mock_server_class
+    ):
         """Test start_unified_server without logger."""
         # Setup mocks
         mock_settings.mcp_path = "/mcp"
@@ -92,7 +95,9 @@ class TestUnifiedServerManager:
     @patch("stringdb_link.server_manager.uvicorn.Server")
     @patch("stringdb_link.server_manager.log_server_startup")
     @patch("stringdb_link.server_manager.app")
-    async def test_start_http_only_server_with_logger(self, mock_app, mock_log_startup, mock_server_class):
+    async def test_start_http_only_server_with_logger(
+        self, mock_app, mock_log_startup, mock_server_class
+    ):
         """Test start_http_only_server with logger."""
         # Setup mocks
         mock_logger = MagicMock()
@@ -145,7 +150,9 @@ class TestUnifiedServerManager:
     @patch("stringdb_link.app.create_mcp_app")
     @patch("stringdb_link.app.create_app")
     @patch("stringdb_link.app.lifespan")
-    async def test_start_stdio_server_with_logger(self, mock_lifespan, mock_create_app, mock_create_mcp_app):
+    async def test_start_stdio_server_with_logger(
+        self, mock_lifespan, mock_create_app, mock_create_mcp_app
+    ):
         """Test start_stdio_server with logger."""
         # Setup mocks
         mock_logger = MagicMock()
@@ -171,7 +178,9 @@ class TestUnifiedServerManager:
     @patch("stringdb_link.app.create_mcp_app")
     @patch("stringdb_link.app.create_app")
     @patch("stringdb_link.app.lifespan")
-    async def test_start_stdio_server_without_logger(self, mock_lifespan, mock_create_app, mock_create_mcp_app):
+    async def test_start_stdio_server_without_logger(
+        self, mock_lifespan, mock_create_app, mock_create_mcp_app
+    ):
         """Test start_stdio_server without logger."""
         # Setup mocks
         mock_app = MagicMock()
@@ -233,8 +242,9 @@ class TestUnifiedServerManagerIntegration:
     @patch("stringdb_link.server_manager.settings")
     @patch("stringdb_link.server_manager.app")
     @patch("stringdb_link.server_manager.mcp_app")
-    async def test_unified_server_app_mounting(self, mock_mcp_app, mock_app,
-                                               mock_settings, mock_server_class):
+    async def test_unified_server_app_mounting(
+        self, mock_mcp_app, mock_app, mock_settings, mock_server_class
+    ):
         """Test that MCP app is properly mounted in unified mode."""
         mock_settings.mcp_path = "/custom-mcp"
         mock_mcp_app.mcp_router = MagicMock()
@@ -265,10 +275,12 @@ class TestUnifiedServerManagerEdgeCases:
             await manager.start_http_only_server()
 
     @pytest.mark.asyncio
-    @patch("stringdb_link.app.create_mcp_app")  
+    @patch("stringdb_link.app.create_mcp_app")
     @patch("stringdb_link.app.create_app")
     @patch("stringdb_link.app.lifespan")
-    async def test_stdio_server_calls_mcp_run_async(self, mock_lifespan, mock_create_app, mock_create_mcp_app):
+    async def test_stdio_server_calls_mcp_run_async(
+        self, mock_lifespan, mock_create_app, mock_create_mcp_app
+    ):
         """Test that MCP server run_async is called with correct transport."""
         # Setup mocks
         mock_app = MagicMock()
@@ -276,7 +288,7 @@ class TestUnifiedServerManagerEdgeCases:
         mock_create_app.return_value = mock_app
         mock_create_mcp_app.return_value = mock_mcp
         mock_mcp.run_async = AsyncMock()
-        
+
         # Set up the async context manager correctly
         async_context = AsyncMock()
         async_context.__aenter__ = AsyncMock()
@@ -287,7 +299,7 @@ class TestUnifiedServerManagerEdgeCases:
 
         # Should complete without exception
         await manager.start_stdio_server()
-            
+
         # Verify the MCP server was called with correct transport
         mock_mcp.run_async.assert_called_once_with(transport="stdio")
 

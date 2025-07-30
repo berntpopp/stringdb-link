@@ -1,4 +1,5 @@
 """Comprehensive tests for CLI functionality."""
+
 # ruff: noqa: ARG002  # Unused method arguments are pytest fixtures
 
 import sys
@@ -103,8 +104,9 @@ class TestCLICommands:
     @patch("stringdb_link.cli.configure_logging")
     @patch("stringdb_link.cli.UnifiedServerManager")
     @patch("stringdb_link.cli.asyncio.run")
-    def test_server_command_basic(self, mock_asyncio_run, mock_server_manager,
-                                  mock_configure_logging, mock_get_settings):
+    def test_server_command_basic(
+        self, mock_asyncio_run, mock_server_manager, mock_configure_logging, mock_get_settings
+    ):
         """Test server command with default settings."""
         mock_settings = MagicMock()
         mock_settings.transport = "http"
@@ -123,8 +125,9 @@ class TestCLICommands:
     @patch("stringdb_link.cli.configure_logging")
     @patch("stringdb_link.cli.UnifiedServerManager")
     @patch("stringdb_link.cli.asyncio.run")
-    def test_server_command_with_options(self, mock_asyncio_run, mock_server_manager,
-                                         mock_configure_logging, mock_get_settings):
+    def test_server_command_with_options(
+        self, mock_asyncio_run, mock_server_manager, mock_configure_logging, mock_get_settings
+    ):
         """Test server command with command line options."""
         mock_settings = MagicMock()
         mock_settings.transport = "http"
@@ -132,14 +135,21 @@ class TestCLICommands:
         mock_logger = MagicMock()
         mock_configure_logging.return_value = mock_logger
 
-        result = self.runner.invoke(app, [
-            "server",
-            "--host", "0.0.0.0",
-            "--port", "9000",
-            "--transport", "unified",
-            "--reload",
-            "--log-level", "debug"
-        ])
+        result = self.runner.invoke(
+            app,
+            [
+                "server",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "9000",
+                "--transport",
+                "unified",
+                "--reload",
+                "--log-level",
+                "debug",
+            ],
+        )
 
         assert result.exit_code == 0
         assert mock_settings.host == "0.0.0.0"
@@ -164,8 +174,9 @@ class TestCLICommands:
     @patch("stringdb_link.cli.configure_logging")
     @patch("stringdb_link.cli.UnifiedServerManager")
     @patch("stringdb_link.cli.asyncio.run")
-    def test_server_command_keyboard_interrupt(self, mock_asyncio_run, mock_server_manager,
-                                               mock_configure_logging, mock_get_settings):
+    def test_server_command_keyboard_interrupt(
+        self, mock_asyncio_run, mock_server_manager, mock_configure_logging, mock_get_settings
+    ):
         """Test server command handling KeyboardInterrupt."""
         mock_settings = MagicMock()
         mock_settings.transport = "http"
@@ -181,8 +192,9 @@ class TestCLICommands:
     @patch("stringdb_link.cli.configure_logging")
     @patch("stringdb_link.cli.UnifiedServerManager")
     @patch("stringdb_link.cli.asyncio.run")
-    def test_server_command_exception(self, mock_asyncio_run, mock_server_manager,
-                                      mock_configure_logging, mock_get_settings):
+    def test_server_command_exception(
+        self, mock_asyncio_run, mock_server_manager, mock_configure_logging, mock_get_settings
+    ):
         """Test server command handling generic exception."""
         mock_settings = MagicMock()
         mock_settings.transport = "http"
@@ -199,8 +211,9 @@ class TestCLICommands:
     @patch("stringdb_link.cli.configure_logging")
     @patch("stringdb_link.cli.UnifiedServerManager")
     @patch("stringdb_link.cli.asyncio.run")
-    def test_mcp_command_success(self, mock_asyncio_run, mock_server_manager,
-                                 mock_configure_logging, mock_get_settings):
+    def test_mcp_command_success(
+        self, mock_asyncio_run, mock_server_manager, mock_configure_logging, mock_get_settings
+    ):
         """Test mcp command successful execution."""
         mock_settings = MagicMock()
         mock_get_settings.return_value = mock_settings
@@ -221,8 +234,9 @@ class TestCLICommands:
     @patch("stringdb_link.cli.configure_logging")
     @patch("stringdb_link.cli.UnifiedServerManager")
     @patch("stringdb_link.cli.asyncio.run")
-    def test_mcp_command_keyboard_interrupt(self, mock_asyncio_run, mock_server_manager,
-                                            mock_configure_logging, mock_get_settings):
+    def test_mcp_command_keyboard_interrupt(
+        self, mock_asyncio_run, mock_server_manager, mock_configure_logging, mock_get_settings
+    ):
         """Test mcp command handling KeyboardInterrupt."""
         mock_settings = MagicMock()
         mock_get_settings.return_value = mock_settings
@@ -236,8 +250,9 @@ class TestCLICommands:
     @patch("stringdb_link.cli.configure_logging")
     @patch("stringdb_link.cli.UnifiedServerManager")
     @patch("stringdb_link.cli.asyncio.run")
-    def test_mcp_command_exception(self, mock_asyncio_run, mock_server_manager,
-                                   mock_configure_logging, mock_get_settings):
+    def test_mcp_command_exception(
+        self, mock_asyncio_run, mock_server_manager, mock_configure_logging, mock_get_settings
+    ):
         """Test mcp command handling generic exception."""
         mock_settings = MagicMock()
         mock_get_settings.return_value = mock_settings
@@ -263,11 +278,7 @@ class TestCLICommands:
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "status": "healthy",
-            "version": "1.0.0",
-            "uptime": 3600
-        }
+        mock_response.json.return_value = {"status": "healthy", "version": "1.0.0", "uptime": 3600}
 
         mock_client = MagicMock()
         mock_client.get.return_value = mock_response

@@ -1,6 +1,5 @@
 """Comprehensive tests for models beyond basic functionality."""
 
-
 from stringdb_link.models.requests import (
     EnrichmentRequest,
     IdentifierRequest,

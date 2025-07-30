@@ -1,4 +1,5 @@
 """Fixed tests for rate limiter utilities."""
+
 # ruff: noqa: SLF001  # Private member access is needed for testing internal state
 
 import asyncio
@@ -341,9 +342,9 @@ class TestTokenBucketRateLimiterEdgeCases:
 
         # Assert
         # First 5 should be immediate (burst capacity)
-        assert all(wt == 0.0 for wt in results[:int(rate_limiter.burst)])
+        assert all(wt == 0.0 for wt in results[: int(rate_limiter.burst)])
         # Remaining should have wait times
-        assert all(wt > 0.0 for wt in results[int(rate_limiter.burst):])
+        assert all(wt > 0.0 for wt in results[int(rate_limiter.burst) :])
 
     def test_stats_consistency(self, rate_limiter):
         """Test that statistics are consistent."""

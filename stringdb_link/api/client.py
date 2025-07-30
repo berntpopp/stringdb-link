@@ -237,7 +237,7 @@ class StringDBClient:
 
             # Keep only recent response times for statistics
             if len(self.response_times) > self._MAX_RESPONSE_TIMES:
-                self.response_times = self.response_times[-self._RESPONSE_TIMES_KEEP:]
+                self.response_times = self.response_times[-self._RESPONSE_TIMES_KEEP :]
 
             # Log the request
             log_stringdb_request(

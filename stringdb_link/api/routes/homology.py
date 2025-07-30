@@ -140,8 +140,7 @@ async def get_homology_scores(
             "content": {
                 "text/plain": {
                     "example": (
-                        "stringId_A\tstringId_B\tbitscore\tevalue\n"
-                        "protein1\tprotein2\t850\t0.0"
+                        "stringId_A\tstringId_B\tbitscore\tevalue\nprotein1\tprotein2\t850\t0.0"
                     )
                 }
             },
@@ -323,8 +322,7 @@ async def get_homology_best_hits(
             "content": {
                 "text/plain": {
                     "example": (
-                        "stringId_A\tstringId_B\tbitscore\tevalue\n"
-                        "protein1\tprotein2\t850\t0.0"
+                        "stringId_A\tstringId_B\tbitscore\tevalue\nprotein1\tprotein2\t850\t0.0"
                     )
                 }
             },

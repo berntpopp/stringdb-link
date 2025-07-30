@@ -31,7 +31,6 @@ async def get_functional_annotations(
 
         return await service.get_functional_annotation(request)
 
-
     except StringDBServiceError as e:
         logger.exception(
             "Service error during functional annotation retrieval",
