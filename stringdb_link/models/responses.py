@@ -100,61 +100,61 @@ class NetworkInteraction(BaseResponse):
         description="NCBI taxonomy identifier",
         json_schema_extra={"example": 9606},
     )
-    score: int = Field(
+    score: float = Field(
         ...,
-        ge=0,
-        le=1000,
-        description="Combined confidence score (0-1000)",
-        json_schema_extra={"example": 999},
+        ge=0.0,
+        le=1.0,
+        description="Combined confidence score (0.0-1.0)",
+        json_schema_extra={"example": 0.999},
     )
-    nscore: int = Field(
+    nscore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Gene neighborhood score",
-        json_schema_extra={"example": 0},
+        json_schema_extra={"example": 0.0},
     )
-    fscore: int = Field(
+    fscore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Gene fusion score",
-        json_schema_extra={"example": 0},
+        json_schema_extra={"example": 0.0},
     )
-    pscore: int = Field(
+    pscore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Phylogenetic profile score",
-        json_schema_extra={"example": 0},
+        json_schema_extra={"example": 0.0},
     )
-    ascore: int = Field(
+    ascore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Coexpression score",
-        json_schema_extra={"example": 203},
+        json_schema_extra={"example": 0.203},
     )
-    escore: int = Field(
+    escore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Experimental score",
-        json_schema_extra={"example": 938},
+        json_schema_extra={"example": 0.938},
     )
-    dscore: int = Field(
+    dscore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Database score",
-        json_schema_extra={"example": 999},
+        json_schema_extra={"example": 0.999},
     )
-    tscore: int = Field(
+    tscore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Textmining score",
-        json_schema_extra={"example": 995},
+        json_schema_extra={"example": 0.995},
     )
 
 
@@ -191,61 +191,61 @@ class InteractionPartner(BaseResponse):
         description="NCBI taxonomy identifier",
         json_schema_extra={"example": 9606},
     )
-    score: int = Field(
+    score: float = Field(
         ...,
-        ge=0,
-        le=1000,
-        description="Combined confidence score (0-1000)",
-        json_schema_extra={"example": 999},
+        ge=0.0,
+        le=1.0,
+        description="Combined confidence score (0.0-1.0)",
+        json_schema_extra={"example": 0.999},
     )
-    nscore: int = Field(
+    nscore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Gene neighborhood score",
-        json_schema_extra={"example": 5},
+        json_schema_extra={"example": 0.005},
     )
-    fscore: int = Field(
+    fscore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Gene fusion score",
-        json_schema_extra={"example": 5},
+        json_schema_extra={"example": 0.005},
     )
-    pscore: int = Field(
+    pscore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Phylogenetic profile score",
-        json_schema_extra={"example": 5},
+        json_schema_extra={"example": 0.005},
     )
-    ascore: int = Field(
+    ascore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Coexpression score",
-        json_schema_extra={"example": 999},
+        json_schema_extra={"example": 0.999},
     )
-    escore: int = Field(
+    escore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Experimental score",
-        json_schema_extra={"example": 999},
+        json_schema_extra={"example": 0.999},
     )
-    dscore: int = Field(
+    dscore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Database score",
-        json_schema_extra={"example": 999},
+        json_schema_extra={"example": 0.999},
     )
-    tscore: int = Field(
+    tscore: float = Field(
         ...,
-        ge=0,
-        le=1000,
+        ge=0.0,
+        le=1.0,
         description="Textmining score",
-        json_schema_extra={"example": 999},
+        json_schema_extra={"example": 0.999},
     )
 
 

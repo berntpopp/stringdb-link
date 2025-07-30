@@ -359,14 +359,14 @@ class TestModelValidationEdgeCases:
         """Test score validation at boundaries."""
         # Test all score fields at boundaries
         score_fields = {
-            "score": 500,
-            "nscore": 0,
-            "fscore": 1000,
-            "pscore": 250,
-            "ascore": 750,
-            "escore": 333,
-            "dscore": 666,
-            "tscore": 999,
+            "score": 0.500,
+            "nscore": 0.0,
+            "fscore": 1.0,
+            "pscore": 0.250,
+            "ascore": 0.750,
+            "escore": 0.333,
+            "dscore": 0.666,
+            "tscore": 0.999,
         }
 
         interaction = NetworkInteraction(

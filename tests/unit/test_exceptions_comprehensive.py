@@ -337,7 +337,7 @@ class TestErrorUsagePatterns:
         field_errors = [
             ("identifiers", [], "Empty identifiers list"),
             ("species", -1, "Invalid species ID"),
-            ("required_score", 1001, "Score out of range"),
+            ("required_score", 1.1, "Score out of range"),
         ]
 
         for field, value, message in field_errors:

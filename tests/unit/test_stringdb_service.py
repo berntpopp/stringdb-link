@@ -128,14 +128,14 @@ class TestStringDBService:
                 "preferredName_A": "TP53",
                 "preferredName_B": "MDM2",
                 "ncbiTaxonId": 9606,
-                "score": 900,
-                "nscore": 0,
-                "fscore": 0,
-                "pscore": 0,
-                "ascore": 203,
-                "escore": 938,
-                "dscore": 999,
-                "tscore": 995,
+                "score": 0.900,
+                "nscore": 0.0,
+                "fscore": 0.0,
+                "pscore": 0.0,
+                "ascore": 0.203,
+                "escore": 0.938,
+                "dscore": 0.999,
+                "tscore": 0.995,
             }
         ]
         mock_client.get_network_interactions.return_value = mock_interactions
@@ -162,14 +162,14 @@ class TestStringDBService:
                 "preferredName_A": "TP53",
                 "preferredName_B": "MDM2",
                 "ncbiTaxonId": 9606,
-                "score": 800,
-                "nscore": 5,
-                "fscore": 5,
-                "pscore": 5,
-                "ascore": 999,
-                "escore": 999,
-                "dscore": 999,
-                "tscore": 999,
+                "score": 0.800,
+                "nscore": 0.005,
+                "fscore": 0.005,
+                "pscore": 0.005,
+                "ascore": 0.999,
+                "escore": 0.999,
+                "dscore": 0.999,
+                "tscore": 0.999,
             }
         ]
         mock_client.get_interaction_partners.return_value = mock_partners
@@ -266,7 +266,7 @@ class TestStringDBService:
             {
                 "stringId_A": "9606.ENSP00000269305",
                 "stringId_B": "10090.ENSMUSP00000001",
-                "bitscore": 850,
+                "bitscore": 85.0,
                 "evalue": 0.0,
             }
         ]
@@ -291,7 +291,7 @@ class TestStringDBService:
             {
                 "stringId_A": "9606.ENSP00000269305",
                 "stringId_B": "10090.ENSMUSP00000001",
-                "bitscore": 850,
+                "bitscore": 85.0,
             }
         ]
         mock_client.get_homology_best_hits.return_value = mock_hits
