@@ -139,10 +139,9 @@ async def resolve_identifiers(
         )
 
     except Exception as e:
-        logger.error(
+        logger.exception(
             "Unexpected error during identifier resolution",
             error=str(e),
-            exc_info=True,
         )
         raise HTTPException(
             status_code=500,
@@ -199,12 +198,37 @@ async def resolve_single_identifier(
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
+
+    except StringDBServiceError as e:
+        logger.exception(
+            "Service error during single identifier resolution",
+            identifier=identifier,
+            error=str(e),
+            operation=e.operation,
+        )
+        raise HTTPException(
+            status_code=e.status_code or 500,
+            detail=f"Service error: {e.message}",
+        )
+
+    except ValidationError as e:
+        logger.exception(
+            "Validation error during single identifier resolution",
+            identifier=identifier,
+            error=str(e),
+            field=e.field,
+            value=e.value,
+        )
+        raise HTTPException(
+            status_code=400,
+            detail=f"Validation error: {e.message}",
+        )
+
     except Exception as e:
-        logger.error(
+        logger.exception(
             "Unexpected error during single identifier resolution",
             identifier=identifier,
             error=str(e),
-            exc_info=True,
         )
         raise HTTPException(
             status_code=500,

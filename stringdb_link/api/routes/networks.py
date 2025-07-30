@@ -14,23 +14,21 @@ from fastapi.responses import PlainTextResponse
 if TYPE_CHECKING:
     from fastapi import Response
 
-from stringdb_link.exceptions import StringDBAPIError, ValidationError
+from stringdb_link.exceptions import StringDBServiceError, ValidationError
 from stringdb_link.models.requests import InteractionPartnersRequest, LinkRequest, NetworkRequest
 from stringdb_link.models.responses import (
-    InteractionPartner,
     InteractionPartnerListResponse,
     LinkInfo,
-    NetworkInteraction,
     NetworkInteractionListResponse,
 )
 from stringdb_link.models.stringdb import OutputFormat
 
-from .dependencies import LoggerDep, StringDBClientDep
+from .dependencies import LoggerDep, StringDBServiceDep
 
 if TYPE_CHECKING:
     from structlog.typing import FilteringBoundLogger
 
-    from stringdb_link.api.client import StringDBClient
+    from stringdb_link.services.stringdb_service import StringDBService
 
 router = APIRouter()
 
@@ -38,7 +36,7 @@ router = APIRouter()
 @router.post("/networks/interactions", response_model=NetworkInteractionListResponse)
 async def get_network_interactions(
     request: NetworkRequest,
-    client: StringDBClient = StringDBClientDep,
+    service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
 ) -> NetworkInteractionListResponse:
     """Get protein-protein interaction network.
@@ -49,7 +47,7 @@ async def get_network_interactions(
 
     Args:
         request: Network interaction request
-        client: StringDB HTTP client
+        service: StringDB service instance
         logger: Logger instance
 
     Returns:
@@ -68,18 +66,8 @@ async def get_network_interactions(
             add_nodes=request.add_nodes,
         )
 
-        # Call StringDB API
-        raw_interactions = await client.get_network_interactions(
-            identifiers=request.identifiers,
-            species=request.species,
-            required_score=request.required_score,
-            network_type=request.network_type.value,
-            add_nodes=request.add_nodes,
-            show_query_node_labels=request.show_query_node_labels,
-        )
-
-        # Convert to response models
-        interactions = [NetworkInteraction(**interaction) for interaction in raw_interactions]
+        # Call StringDB service
+        interactions = await service.get_network_interactions(request)
 
         logger.info(
             "Successfully retrieved network interactions",
@@ -92,23 +80,21 @@ async def get_network_interactions(
             total_count=len(interactions),
         )
 
-    except StringDBAPIError as e:
+    except StringDBServiceError as e:
         logger.exception(
-            "StringDB API error during network interaction retrieval",
+            "StringDB service error during network interaction retrieval",
             error=str(e),
             status_code=e.status_code,
         )
         raise HTTPException(
             status_code=e.status_code or 502,
-            detail=f"StringDB API error: {e.message}",
+            detail=f"StringDB service error: {e.message}",
         )
 
     except ValidationError as e:
         logger.exception(
             "Validation error during network interaction retrieval",
             error=str(e),
-            field=e.field,
-            value=e.value,
         )
         raise HTTPException(
             status_code=400,
@@ -116,10 +102,9 @@ async def get_network_interactions(
         )
 
     except Exception as e:
-        logger.error(
+        logger.exception(
             "Unexpected error during network interaction retrieval",
             error=str(e),
-            exc_info=True,
         )
         raise HTTPException(
             status_code=500,
@@ -130,7 +115,7 @@ async def get_network_interactions(
 @router.post("/networks/partners", response_model=InteractionPartnerListResponse)
 async def get_interaction_partners(
     request: InteractionPartnersRequest,
-    client: StringDBClient = StringDBClientDep,
+    service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
 ) -> InteractionPartnerListResponse:
     """Get interaction partners for proteins.
@@ -160,17 +145,9 @@ async def get_interaction_partners(
             network_type=request.network_type,
         )
 
-        # Call StringDB API
-        raw_partners = await client.get_interaction_partners(
-            identifiers=request.identifiers,
-            species=request.species,
-            limit=request.limit,
-            required_score=request.required_score,
-            network_type=request.network_type.value,
-        )
-
-        # Convert to response models
-        partners = [InteractionPartner(**partner) for partner in raw_partners]
+        # Call StringDB service
+        partners_response = await service.get_interaction_partners(request)
+        partners = partners_response.partners
 
         logger.info(
             "Successfully retrieved interaction partners",
@@ -183,15 +160,15 @@ async def get_interaction_partners(
             total_count=len(partners),
         )
 
-    except StringDBAPIError as e:
+    except StringDBServiceError as e:
         logger.exception(
-            "StringDB API error during interaction partner retrieval",
+            "StringDB service error during interaction partner retrieval",
             error=str(e),
             status_code=e.status_code,
         )
         raise HTTPException(
             status_code=e.status_code or 502,
-            detail=f"StringDB API error: {e.message}",
+            detail=f"StringDB service error: {e.message}",
         )
 
     except ValidationError as e:
@@ -207,10 +184,9 @@ async def get_interaction_partners(
         )
 
     except Exception as e:
-        logger.error(
+        logger.exception(
             "Unexpected error during interaction partner retrieval",
             error=str(e),
-            exc_info=True,
         )
         raise HTTPException(
             status_code=500,
@@ -225,7 +201,7 @@ async def get_single_protein_network(
     required_score: int = Query(400, description="Minimum confidence score (0-1000)"),
     add_nodes: int = Query(10, description="Number of additional nodes to add"),
     network_type: str = Query("functional", description="Network type (functional or physical)"),
-    client: StringDBClient = StringDBClientDep,
+    service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
 ) -> NetworkInteractionListResponse:
     """Get interaction network for a single protein.
@@ -259,17 +235,16 @@ async def get_single_protein_network(
         )
 
         # Use the main endpoint logic
-        return await get_network_interactions(request, client, logger)
+        return await get_network_interactions(request, service, logger)
 
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
-        logger.error(
+        logger.exception(
             "Unexpected error during single protein network retrieval",
             identifier=identifier,
             error=str(e),
-            exc_info=True,
         )
         raise HTTPException(
             status_code=500,
@@ -284,7 +259,7 @@ async def get_single_protein_partners(
     limit: int = Query(10, description="Maximum number of partners"),
     required_score: int = Query(400, description="Minimum confidence score (0-1000)"),
     network_type: str = Query("functional", description="Network type (functional or physical)"),
-    client: StringDBClient = StringDBClientDep,
+    service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
 ) -> InteractionPartnerListResponse:
     """Get interaction partners for a single protein.
@@ -318,17 +293,16 @@ async def get_single_protein_partners(
         )
 
         # Use the main endpoint logic
-        return await get_interaction_partners(request, client, logger)
+        return await get_interaction_partners(request, service, logger)
 
     except HTTPException:
         # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
-        logger.error(
+        logger.exception(
             "Unexpected error during single protein partner retrieval",
             identifier=identifier,
             error=str(e),
-            exc_info=True,
         )
         raise HTTPException(
             status_code=500,
@@ -339,7 +313,7 @@ async def get_single_protein_partners(
 @router.post("/networks/link", response_model=LinkInfo)
 async def get_network_link(
     request: LinkRequest,
-    client: StringDBClient = StringDBClientDep,
+    service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
     output_format: OutputFormat = Query(
         OutputFormat.JSON,
@@ -364,53 +338,28 @@ async def get_network_link(
             species=request.species,
         )
 
-        # Prepare additional parameters for link generation
-        link_params = {
-            "required_score": request.required_score,
-            "network_type": request.network_type.value,
-            "network_flavor": request.network_flavor.value,
-        }
-
-        result = await client.get_link(
-            identifiers=request.identifiers,
-            species=request.species,
-            output_format=output_format,
-            **link_params,
-        )
+        link_info = await service.get_network_link(request)
 
         if output_format == OutputFormat.JSON:
-            # Extract URL from result
-            if isinstance(result, dict):
-                url = result.get("url", str(result))
-            else:
-                url = str(result)
-
-            logger.info(
-                "Successfully generated network link",
-                identifiers=request.identifiers,
-                url=url,
-            )
-
-            return LinkInfo(url=url)
+            return link_info
         # Return raw text for non-JSON formats
         return PlainTextResponse(
-            content=result,
+            content=link_info.url,
             media_type="text/plain",
         )
 
-    except StringDBAPIError as e:
+    except StringDBServiceError as e:
         logger.error(
-            "StringDB API error during link generation",
+            "StringDB service error during link generation",
             identifiers=request.identifiers,
             error=str(e),
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:
-        logger.error(
+        logger.exception(
             "Unexpected error during link generation",
             identifiers=request.identifiers,
             error=str(e),
-            exc_info=True,
         )
         raise HTTPException(
             status_code=500,

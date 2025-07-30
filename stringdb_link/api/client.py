@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+import types
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
 
@@ -34,9 +35,45 @@ class StringDBClient:
     """Async HTTP client for StringDB API with token bucket rate limiting."""
 
     # HTTP status code constants
+    _HTTP_OK = 200
+    _HTTP_CLIENT_ERROR = 400
     _HTTP_TOO_MANY_REQUESTS = 429
     _HTTP_SERVER_ERROR = 500
-    _HTTP_CLIENT_ERROR = 400
+
+    # Response tracking constants
+    _MAX_RESPONSE_TIMES = 1000
+    _RESPONSE_TIMES_KEEP = 500
+
+    def _raise_rate_limit_error(self, endpoint: str, response: httpx.Response) -> None:
+        """Raise rate limit error with proper details."""
+        retry_after = int(response.headers.get("Retry-After", 60))
+        msg = f"Rate limit exceeded for endpoint {endpoint}"
+        raise StringDBRateLimitError(
+            msg,
+            retry_after=retry_after,
+            endpoint=endpoint,
+        )
+
+    def _raise_server_error(self, endpoint: str, response: httpx.Response) -> None:
+        """Raise server error with proper details."""
+        msg = f"StringDB server error: {response.status_code}"
+        raise StringDBAPIError(
+            msg,
+            status_code=response.status_code,
+            endpoint=endpoint,
+        )
+
+    def _raise_client_error(
+        self, endpoint: str, response: httpx.Response, error_data: dict[str, Any]
+    ) -> None:
+        """Raise client error with proper details."""
+        msg = f"StringDB API error: {response.status_code}"
+        raise StringDBAPIError(
+            msg,
+            status_code=response.status_code,
+            response_data=error_data,
+            endpoint=endpoint,
+        )
 
     def __init__(
         self,
@@ -87,7 +124,12 @@ class StringDBClient:
         await self._ensure_client()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         """Async context manager exit."""
         await self.close()
 
@@ -173,7 +215,7 @@ class StringDBClient:
         # Apply token bucket rate limiting
         wait_time = await self.rate_limiter.wait_if_needed()
         if wait_time > 0:
-            self.logger.debug(f"Rate limited, waited {wait_time:.3f}s")
+            self.logger.debug("Rate limited, waited %.3fs", wait_time)
 
         # Construct URL
         url_path = f"{output_format}/{endpoint}"
@@ -193,8 +235,8 @@ class StringDBClient:
             self.response_times.append(duration)
 
             # Keep only recent response times for statistics
-            if len(self.response_times) > 1000:
-                self.response_times = self.response_times[-500:]
+            if len(self.response_times) > self._MAX_RESPONSE_TIMES:
+                self.response_times = self.response_times[-self._RESPONSE_TIMES_KEEP:]
 
             # Log the request
             log_stringdb_request(
@@ -206,7 +248,7 @@ class StringDBClient:
             )
 
             # Handle response based on status code
-            if response.status_code == 200:
+            if response.status_code == self._HTTP_OK:
                 # Success
                 self.successful_requests += 1
                 await self.rate_limiter.on_success()
@@ -226,13 +268,7 @@ class StringDBClient:
                 self.failed_requests += 1
                 await self.rate_limiter.on_rate_limited()
 
-                retry_after = int(response.headers.get("Retry-After", 60))
-                msg = f"Rate limit exceeded for endpoint {endpoint}"
-                raise StringDBRateLimitError(
-                    msg,
-                    retry_after=retry_after,
-                    endpoint=endpoint,
-                )
+                self._raise_rate_limit_error(endpoint, response)
 
             if response.status_code >= self._HTTP_SERVER_ERROR:
                 # Server error - retry if we have retries left
@@ -256,28 +292,17 @@ class StringDBClient:
                         retries + 1,
                     )
 
-                msg = f"StringDB server error: {response.status_code}"
-                raise StringDBAPIError(
-                    msg,
-                    status_code=response.status_code,
-                    endpoint=endpoint,
-                )
+                self._raise_server_error(endpoint, response)
 
             # Client error (4xx)
             self.failed_requests += 1
 
             try:
                 error_data = response.json()
-            except Exception:
+            except httpx.JSONDecodeError:
                 error_data = {"message": response.text}
 
-            msg = f"StringDB API error: {response.status_code}"
-            raise StringDBAPIError(
-                msg,
-                status_code=response.status_code,
-                response_data=error_data,
-                endpoint=endpoint,
-            )
+            self._raise_client_error(endpoint, response, error_data)
 
         except httpx.TimeoutException as e:
             self.failed_requests += 1
@@ -299,11 +324,10 @@ class StringDBClient:
 
         except Exception as e:
             self.failed_requests += 1
-            self.logger.error(
+            self.logger.exception(
                 "Unexpected error during StringDB request",
                 endpoint=endpoint,
                 error=str(e),
-                exc_info=True,
             )
             msg = f"Unexpected error accessing {endpoint}: {e}"
             raise StringDBAPIError(
@@ -316,6 +340,7 @@ class StringDBClient:
         self,
         identifiers: list[str],
         species: int | None = None,
+        *,
         echo_query: bool = False,
         output_format: OutputFormat = OutputFormat.JSON,
     ) -> list[dict[str, Any]] | str:
@@ -348,6 +373,7 @@ class StringDBClient:
         required_score: int = 400,
         network_type: str = "functional",
         add_nodes: int = 0,
+        *,
         show_query_node_labels: bool = False,
         output_format: OutputFormat = OutputFormat.JSON,
     ) -> list[dict[str, Any]] | str:
@@ -455,6 +481,7 @@ class StringDBClient:
         self,
         identifiers: list[str],
         species: int | None = None,
+        *,
         allow_pubmed: bool = False,
         only_pubmed: bool = False,
         output_format: OutputFormat = OutputFormat.JSON,
@@ -550,7 +577,7 @@ class StringDBClient:
                 duration=duration,
             )
 
-            if response.status_code == 200:
+            if response.status_code == self._HTTP_OK:
                 return response.content
             msg = f"Failed to generate network image: {response.status_code}"
             raise StringDBAPIError(

@@ -6,16 +6,16 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException
 
-from stringdb_link.exceptions import StringDBAPIError
+from stringdb_link.exceptions import StringDBServiceError, ValidationError
 from stringdb_link.models.requests import AnnotationRequest
-from stringdb_link.models.responses import FunctionalAnnotation, FunctionalAnnotationListResponse
+from stringdb_link.models.responses import FunctionalAnnotationListResponse
 
-from .dependencies import LoggerDep, StringDBClientDep
+from .dependencies import LoggerDep, StringDBServiceDep
 
 if TYPE_CHECKING:
     from structlog.typing import FilteringBoundLogger
 
-    from stringdb_link.api.client import StringDBClient
+    from stringdb_link.services.stringdb_service import StringDBService
 
 router = APIRouter()
 
@@ -23,30 +23,46 @@ router = APIRouter()
 @router.post("/annotations/functional", response_model=FunctionalAnnotationListResponse)
 async def get_functional_annotations(
     request: AnnotationRequest,
-    client: StringDBClient = StringDBClientDep,
+    service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
 ) -> FunctionalAnnotationListResponse:
     """Get functional annotations for proteins."""
     try:
         logger.info("Getting functional annotations", identifiers=request.identifiers)
 
-        raw_annotations = await client.get_functional_annotation(
-            identifiers=request.identifiers,
-            species=request.species,
-            allow_pubmed=request.allow_pubmed,
-            only_pubmed=request.only_pubmed,
+        annotations_response = await service.get_functional_annotation(request)
+
+        return annotations_response
+
+    except StringDBServiceError as e:
+        logger.exception(
+            "Service error during functional annotation retrieval",
+            error=str(e),
+            operation=e.operation,
         )
-
-        annotations = [FunctionalAnnotation(**annotation) for annotation in raw_annotations]
-
-        return FunctionalAnnotationListResponse(
-            annotations=annotations, total_count=len(annotations)
-        )
-
-    except StringDBAPIError as e:
         raise HTTPException(
-            status_code=e.status_code or 502, detail=f"StringDB API error: {e.message}"
+            status_code=e.status_code or 500,
+            detail=f"Service error: {e.message}",
         )
+
+    except ValidationError as e:
+        logger.exception(
+            "Validation error during functional annotation retrieval",
+            error=str(e),
+            field=e.field,
+            value=e.value,
+        )
+        raise HTTPException(
+            status_code=400,
+            detail=f"Validation error: {e.message}",
+        )
+
     except Exception as e:
-        logger.error("Error getting functional annotations", error=str(e), exc_info=True)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.exception(
+            "Unexpected error during functional annotation retrieval",
+            error=str(e),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error during functional annotation retrieval",
+        )

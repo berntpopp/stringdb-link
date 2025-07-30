@@ -16,6 +16,9 @@ from rich.console import Console
 from rich.logging import RichHandler
 import structlog
 
+# HTTP status constants
+HTTP_CLIENT_ERROR = 400
+
 from .config import settings
 
 if TYPE_CHECKING:
@@ -176,7 +179,7 @@ def log_request(
     if duration is not None:
         log_data["duration_ms"] = round(duration * 1000, 2)
 
-    if status_code and status_code >= 400:
+    if status_code and status_code >= HTTP_CLIENT_ERROR:
         logger.warning("HTTP request failed", **log_data)
     else:
         logger.info("HTTP request completed", **log_data)
@@ -188,6 +191,7 @@ def log_stringdb_request(
     method: str = "POST",
     status_code: int | None = None,
     duration: float | None = None,
+    *,
     cache_hit: bool = False,
     **kwargs: Any,
 ) -> None:

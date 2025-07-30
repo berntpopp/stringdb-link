@@ -13,8 +13,11 @@ from rich.console import Console
 from rich.table import Table
 import typer
 
+# HTTP status constants
+HTTP_OK = 200
+
 from . import API_VERSION, VERSION
-from .config import get_settings, reload_settings
+from .config import Settings, get_settings, reload_settings
 from .logging_config import configure_logging
 from .server_manager import UnifiedServerManager
 
@@ -192,7 +195,7 @@ def mcp() -> None:
         sys.exit(0)
     except Exception as e:
         # Log errors to stderr (won't interfere with STDIO protocol)
-        logger.error("MCP server error", error=str(e), exc_info=True)
+        logger.exception("MCP server error", error=str(e))
         sys.exit(1)
 
 
@@ -210,7 +213,7 @@ def health() -> None:
         with httpx.Client() as client:
             response = client.get(f"http://{settings.host}:{settings.port}/api/health")
 
-        if response.status_code == 200:
+        if response.status_code == HTTP_OK:
             data = response.json()
             console.print("[green]✓[/green] Server is healthy")
 
@@ -234,7 +237,7 @@ def health() -> None:
         raise typer.Exit(1)
 
 
-async def start_server(server_manager: UnifiedServerManager, settings) -> None:
+async def start_server(server_manager: UnifiedServerManager, settings: Settings) -> None:
     """Start the server based on transport mode."""
     if settings.transport == "unified":
         await server_manager.start_unified_server(

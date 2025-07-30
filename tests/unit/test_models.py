@@ -127,19 +127,19 @@ class TestResponseModels:
             preferred_name_a="TP53",
             preferred_name_b="MDM2",
             ncbi_taxon_id=9606,
-            score=0.999,
-            nscore=0.0,
-            fscore=0.0,
-            pscore=0.0,
-            ascore=0.203,
-            escore=0.938,
-            dscore=0.999,
-            tscore=0.995,
+            score=999,
+            nscore=0,
+            fscore=0,
+            pscore=0,
+            ascore=203,
+            escore=938,
+            dscore=999,
+            tscore=995,
         )
 
         assert interaction.string_id_a == "9606.ENSP00000269305"
         assert interaction.preferred_name_a == "TP53"
-        assert interaction.score == 0.999
+        assert interaction.score == 999
 
     def test_enrichment_term(self):
         """Test EnrichmentTerm model."""
@@ -182,7 +182,25 @@ class TestResponseModels:
         )
         assert interaction.score == 0
 
-        # Invalid scores
+        # Test maximum valid score
+        interaction = NetworkInteraction(
+            string_id_a="9606.ENSP00000269305",
+            string_id_b="9606.ENSP00000344843",
+            preferred_name_a="TP53",
+            preferred_name_b="MDM2",
+            ncbi_taxon_id=9606,
+            score=1000,
+            nscore=1000,
+            fscore=1000,
+            pscore=1000,
+            ascore=1000,
+            escore=1000,
+            dscore=1000,
+            tscore=1000,
+        )
+        assert interaction.score == 1000
+
+        # Invalid scores (negative)
         with pytest.raises(ValidationError):
             NetworkInteraction(
                 string_id_a="9606.ENSP00000269305",
@@ -191,6 +209,24 @@ class TestResponseModels:
                 preferred_name_b="MDM2",
                 ncbi_taxon_id=9606,
                 score=-1,  # Invalid
+                nscore=0,
+                fscore=0,
+                pscore=0,
+                ascore=0,
+                escore=0,
+                dscore=0,
+                tscore=0,
+            )
+
+        # Invalid scores (too high)
+        with pytest.raises(ValidationError):
+            NetworkInteraction(
+                string_id_a="9606.ENSP00000269305",
+                string_id_b="9606.ENSP00000344843",
+                preferred_name_a="TP53",
+                preferred_name_b="MDM2",
+                ncbi_taxon_id=9606,
+                score=1001,  # Invalid
                 nscore=0,
                 fscore=0,
                 pscore=0,

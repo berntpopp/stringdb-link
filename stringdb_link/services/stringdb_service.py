@@ -100,11 +100,11 @@ class StringDBService:
             )
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 "Error resolving identifiers",
                 error=str(e),
                 identifiers=request.identifiers,
-                exc_info=True,
+
             )
             msg = f"Failed to resolve identifiers: {e}"
             raise StringDBServiceError(msg) from e
@@ -174,11 +174,11 @@ class StringDBService:
             )
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 "Error getting network interactions",
                 error=str(e),
                 identifiers=request.identifiers,
-                exc_info=True,
+
             )
             msg = f"Failed to get network interactions: {e}"
             raise StringDBServiceError(msg) from e
@@ -253,11 +253,11 @@ class StringDBService:
             )
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 "Error getting interaction partners",
                 error=str(e),
                 identifiers=request.identifiers,
-                exc_info=True,
+
             )
             msg = f"Failed to get interaction partners: {e}"
             raise StringDBServiceError(msg) from e
@@ -329,11 +329,11 @@ class StringDBService:
             )
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 "Error getting functional enrichment",
                 error=str(e),
                 identifiers=request.identifiers,
-                exc_info=True,
+
             )
             msg = f"Failed to get functional enrichment: {e}"
             raise StringDBServiceError(msg) from e
@@ -402,11 +402,11 @@ class StringDBService:
             )
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 "Error getting functional annotations",
                 error=str(e),
                 identifiers=request.identifiers,
-                exc_info=True,
+
             )
             msg = f"Failed to get functional annotations: {e}"
             raise StringDBServiceError(msg) from e
@@ -477,11 +477,11 @@ class StringDBService:
             return NetworkImageResponse(image=image)
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 "Error generating network image",
                 error=str(e),
                 identifiers=request.identifiers,
-                exc_info=True,
+
             )
             msg = f"Failed to generate network image: {e}"
             raise StringDBServiceError(msg) from e
@@ -584,12 +584,12 @@ class StringDBService:
             return result
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 "Error getting homology scores",
                 error=str(e),
                 identifiers=identifiers,
                 species=species,
-                exc_info=True,
+
             )
             msg = f"Failed to get homology scores: {e}"
             raise StringDBServiceError(msg) from e
@@ -647,15 +647,128 @@ class StringDBService:
             return result
 
         except Exception as e:
-            self.logger.error(
+            self.logger.exception(
                 "Error getting homology best hits",
                 error=str(e),
                 identifiers=identifiers,
                 species=species,
                 species_b=species_b,
-                exc_info=True,
+
             )
             msg = f"Failed to get homology best hits: {e}"
+            raise StringDBServiceError(msg) from e
+
+    async def get_ppi_enrichment(self, request: PPIEnrichmentRequest) -> PPIEnrichmentResult:
+        """Get protein-protein interaction enrichment analysis.
+
+        Args:
+            request: PPI enrichment analysis request
+
+        Returns:
+            PPI enrichment analysis result
+
+        Raises:
+            StringDBServiceError: If the operation fails
+        """
+        try:
+            self.logger.info(
+                "Getting PPI enrichment",
+                identifiers=request.identifiers,
+                species=request.species,
+            )
+
+            raw_result = await self.client.get_ppi_enrichment(
+                identifiers=request.identifiers,
+                species=request.species,
+                required_score=request.required_score,
+                background_string_identifiers=request.background_string_identifiers,
+            )
+
+            from stringdb_link.models.responses import PPIEnrichmentResult
+
+            result = PPIEnrichmentResult(**raw_result)
+
+            self.logger.info(
+                "Successfully retrieved PPI enrichment",
+                identifiers=request.identifiers,
+                species=request.species,
+            )
+
+            return result
+
+        except Exception as e:
+            self.logger.exception(
+                "Error getting PPI enrichment",
+                error=str(e),
+                identifiers=request.identifiers,
+                species=request.species,
+
+            )
+            msg = f"Failed to get PPI enrichment: {e}"
+            raise StringDBServiceError(msg) from e
+
+    async def get_network_link(self, request: LinkRequest) -> LinkInfo:
+        """Get shareable link to STRING webpage for the network.
+
+        Args:
+            request: Link generation request
+
+        Returns:
+            Link information with URL
+
+        Raises:
+            StringDBServiceError: If the operation fails
+        """
+        try:
+            self.logger.info(
+                "Getting network link",
+                identifiers=request.identifiers,
+                species=request.species,
+            )
+
+            # Prepare additional parameters for link generation
+            link_params = {
+                "required_score": request.required_score,
+                "network_type": request.network_type.value,
+                "network_flavor": request.network_flavor.value,
+            }
+
+            from stringdb_link.models.stringdb import OutputFormat
+
+            result = await self.client.get_link(
+                identifiers=request.identifiers,
+                species=request.species,
+                output_format=OutputFormat.JSON,
+                **link_params,
+            )
+
+            # Extract URL from result
+            if isinstance(result, dict):
+                url = result.get("url", str(result))
+            else:
+                url = str(result)
+
+            from stringdb_link.models.responses import LinkInfo
+
+            link_info = LinkInfo(url=url)
+
+            self.logger.info(
+                "Successfully generated network link",
+                identifiers=request.identifiers,
+                url=url,
+            )
+
+            return link_info
+
+        except Exception as e:
+            self.logger.exception(
+                "Error getting network link",
+                error=str(e),
+                identifiers=request.identifiers,
+                species=request.species,
+
+            )
+            msg = f"Failed to get network link: {e}"
             raise StringDBServiceError(msg) from e
 
     async def get_cache_stats(self) -> dict[str, Any]:
