@@ -30,6 +30,12 @@ async def get_functional_enrichment(
 ) -> EnrichmentTermListResponse:
     """Perform functional enrichment analysis."""
     try:
+        logger.debug(
+            "Received functional enrichment request",
+            identifiers=request.identifiers,
+            species=request.species,
+            species_type=type(request.species).__name__,
+        )
         logger.info("Performing functional enrichment analysis", identifiers=request.identifiers)
 
         terms = await service.get_functional_enrichment(request)
@@ -81,7 +87,6 @@ async def get_ppi_enrichment(
         logger.info("Performing PPI enrichment analysis", identifiers=request.identifiers)
 
         return await service.get_ppi_enrichment(request)
-
 
     except StringDBServiceError as e:
         logger.exception(

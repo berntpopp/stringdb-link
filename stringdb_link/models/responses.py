@@ -276,16 +276,19 @@ class EnrichmentTerm(BaseResponse):
     )
     ncbi_taxon_id: int = Field(
         ...,
+        alias="ncbiTaxonId",
         description="NCBI taxonomy identifier",
         json_schema_extra={"example": 9606},
     )
     input_genes: list[str] = Field(
         ...,
+        alias="inputGenes",
         description="Gene names from input with this term",
         json_schema_extra={"example": ["TP53", "MDM2", "ATM"]},
     )
     preferred_names: list[str] = Field(
         ...,
+        alias="preferredNames",
         description="Preferred protein names",
         json_schema_extra={"example": ["TP53", "MDM2", "ATM"]},
     )
@@ -338,16 +341,19 @@ class FunctionalAnnotation(BaseResponse):
     )
     ncbi_taxon_id: int = Field(
         ...,
+        alias="ncbiTaxonId",
         description="NCBI taxonomy identifier",
         json_schema_extra={"example": 9606},
     )
     input_genes: list[str] = Field(
         ...,
+        alias="inputGenes",
         description="Gene names from input with this annotation",
         json_schema_extra={"example": ["TP53"]},
     )
     preferred_names: list[str] = Field(
         ...,
+        alias="preferredNames",
         description="Preferred protein names",
         json_schema_extra={"example": ["TP53"]},
     )
@@ -453,7 +459,9 @@ class LinkInfo(BaseResponse):
     url: str = Field(
         ...,
         description="URL to STRING webpage showing the network",
-        json_schema_extra={"example": "https://version-12-0.string-db.org/cgi/network?networkId=abc123"},
+        json_schema_extra={
+            "example": "https://version-12-0.string-db.org/cgi/network?networkId=abc123"
+        },
     )
 
 

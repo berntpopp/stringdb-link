@@ -113,6 +113,13 @@ async def resolve_identifiers(
 ) -> StringIdMappingListResponse:
     """Resolve protein identifiers to STRING database identifiers."""
     try:
+        logger.debug(
+            "Received identifier resolution request",
+            identifiers=request.identifiers,
+            species=request.species,
+            species_type=type(request.species).__name__,
+            echo_query=request.echo_query,
+        )
         return await service.resolve_identifiers(request)
 
     except StringDBServiceError as e:
