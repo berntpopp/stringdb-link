@@ -186,8 +186,8 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-# claude files
+# Claude local state
 .claude/
-CLAUDE.md
+CLAUDE.local.md
 PLAN.md
 TODO.md
