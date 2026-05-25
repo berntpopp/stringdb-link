@@ -9,8 +9,8 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-from fastapi import FastAPI
 import uvicorn
+from fastapi import FastAPI
 
 from .app import app, mcp_app
 from .config import settings
