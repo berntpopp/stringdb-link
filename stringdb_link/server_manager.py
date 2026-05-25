@@ -6,8 +6,10 @@ providing a consistent interface for starting and stopping the server.
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
+from fastapi import FastAPI
 import uvicorn
 
 from .app import app, mcp_app
@@ -45,8 +47,23 @@ class UnifiedServerManager:
         if self.logger:
             log_server_startup(self.logger, "unified", host, port)
 
-        # Add MCP endpoint to the main app
-        app.mount(settings.mcp_path, mcp_app.mcp_router)
+        if mcp_app is None:
+            msg = "MCP app is not available"
+            raise RuntimeError(msg)
+
+        # FastMCP 3 exposes hosted MCP as an ASGI app. Use path="/" so the
+        # final endpoint is settings.mcp_path rather than a double-prefixed path.
+        mcp_http_app = mcp_app.http_app(path="/")
+
+        original_lifespan = app.router.lifespan_context
+
+        @asynccontextmanager
+        async def combined_lifespan(fastapi_app: FastAPI):
+            async with mcp_http_app.lifespan(mcp_http_app), original_lifespan(fastapi_app):
+                yield
+
+        app.router.lifespan_context = combined_lifespan
+        app.mount(settings.mcp_path, mcp_http_app)
 
         config = uvicorn.Config(
             app=app,

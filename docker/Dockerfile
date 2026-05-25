@@ -3,45 +3,54 @@
 
 # --- Builder Stage ---
 # This stage installs all dependencies and creates a clean Python environment
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim AS builder
 
 # Set environment variables for optimal Python behavior
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
 
 # Install system dependencies required for building Python packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Create virtual environment for better dependency isolation
 RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
+ENV VIRTUAL_ENV="/opt/venv" \
+    PATH="/opt/venv/bin:$PATH"
 
 # Copy dependency files first for better layer caching
 WORKDIR /app
-COPY pyproject.toml ./
+COPY uv.lock pyproject.toml README.md ./
 
 # Install dependencies in the virtual environment
-# Use --no-deps to prevent pip from installing development dependencies
-RUN pip install --upgrade pip setuptools wheel && \
-    pip install -e .[production]
+# Install production dependencies only
+RUN pip install --upgrade pip uv && \
+    uv sync --frozen --no-dev --active --no-install-project
 
 # --- Production Stage ---
 # This stage creates the final, minimal production image
-FROM python:3.11-slim AS production
+FROM python:3.12-slim AS production
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:$PATH" \
-    PYTHONPATH="/home/app/web"
+    PYTHONPATH="/home/app/web" \
+    HOST=0.0.0.0 \
+    PORT=8000 \
+    TRANSPORT=unified
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -73,5 +82,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/api/health/ || exit 1
 
-# Default production command using Gunicorn with Uvicorn workers
-CMD ["gunicorn", "-c", "gunicorn_conf.py", "stringdb_link.app:app"]
+# Default production command exposes REST plus hosted MCP.
+CMD ["stringdb-link", "server", "--transport", "unified", "--host", "0.0.0.0", "--port", "8000"]

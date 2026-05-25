@@ -39,7 +39,8 @@ class TestUnifiedServerManager:
         # Setup mocks
         mock_logger = MagicMock()
         mock_settings.mcp_path = "/mcp"
-        mock_mcp_app.mcp_router = MagicMock()
+        mock_mcp_http_app = MagicMock()
+        mock_mcp_app.http_app.return_value = mock_mcp_http_app
         mock_server = AsyncMock()
         mock_server_class.return_value = mock_server
 
@@ -51,7 +52,8 @@ class TestUnifiedServerManager:
         mock_log_startup.assert_called_once_with(mock_logger, "unified", "0.0.0.0", 9000)
 
         # Verify MCP endpoint mounting
-        mock_app.mount.assert_called_once_with("/mcp", mock_mcp_app.mcp_router)
+        mock_mcp_app.http_app.assert_called_once_with(path="/")
+        mock_app.mount.assert_called_once_with("/mcp", mock_mcp_http_app)
 
         # Verify uvicorn config
         mock_server_class.assert_called_once()
@@ -77,7 +79,8 @@ class TestUnifiedServerManager:
         """Test start_unified_server without logger."""
         # Setup mocks
         mock_settings.mcp_path = "/mcp"
-        mock_mcp_app.mcp_router = MagicMock()
+        mock_mcp_http_app = MagicMock()
+        mock_mcp_app.http_app.return_value = mock_mcp_http_app
         mock_server = AsyncMock()
         mock_server_class.return_value = mock_server
 
@@ -86,7 +89,8 @@ class TestUnifiedServerManager:
         await manager.start_unified_server()
 
         # Verify MCP endpoint mounting
-        mock_app.mount.assert_called_once_with("/mcp", mock_mcp_app.mcp_router)
+        mock_mcp_app.http_app.assert_called_once_with(path="/")
+        mock_app.mount.assert_called_once_with("/mcp", mock_mcp_http_app)
 
         # Verify server start
         mock_server.serve.assert_called_once()
@@ -247,7 +251,8 @@ class TestUnifiedServerManagerIntegration:
     ):
         """Test that MCP app is properly mounted in unified mode."""
         mock_settings.mcp_path = "/custom-mcp"
-        mock_mcp_app.mcp_router = MagicMock()
+        mock_mcp_http_app = MagicMock()
+        mock_mcp_app.http_app.return_value = mock_mcp_http_app
         mock_server = AsyncMock()
         mock_server_class.return_value = mock_server
 
@@ -255,7 +260,8 @@ class TestUnifiedServerManagerIntegration:
         await manager.start_unified_server()
 
         # Verify the mount call
-        mock_app.mount.assert_called_once_with("/custom-mcp", mock_mcp_app.mcp_router)
+        mock_mcp_app.http_app.assert_called_once_with(path="/")
+        mock_app.mount.assert_called_once_with("/custom-mcp", mock_mcp_http_app)
 
 
 class TestUnifiedServerManagerEdgeCases:
