@@ -357,10 +357,10 @@ class TestCLICommands:
         assert "StringDB-Link" in result.stdout or "stringdb-link" in result.stdout
 
     def test_no_command(self):
-        """Test running without command displays help due to no_args_is_help=True."""
+        """Test running without command displays help with usage-error status."""
         result = self.runner.invoke(app, [])
 
-        assert result.exit_code == 0
+        assert result.exit_code == 2
         assert "Usage:" in result.stdout
 
 
