@@ -12,7 +12,7 @@ repos:
       - id: debug-statements
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.6
+    rev: v0.15.14
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
@@ -31,4 +31,4 @@ repos:
         entry: uv run python scripts/check_file_size.py
         language: system
         pass_filenames: false
-        files: ^(stringdb_link/|server\.py$|mcp_server\.py$|\.loc-allowlist$)
+        files: ^(stringdb_link/|server\.py$|mcp_server\.py$|scripts/check_file_size\.py$|\.loc-allowlist$)
