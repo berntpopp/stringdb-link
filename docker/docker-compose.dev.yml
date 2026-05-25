@@ -27,7 +27,7 @@ services:
       sh -c "
         cd /home/app/web &&
         pip install -e . &&
-        uvicorn stringdb_link.app:app --host 0.0.0.0 --port 8000 --reload --reload-dir stringdb_link
+        stringdb-link server --transport unified --host 0.0.0.0 --port 8000 --reload
       "
     
     # Override user to root for development (to avoid permission issues)

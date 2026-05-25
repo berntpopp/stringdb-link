@@ -8,14 +8,12 @@ services:
       STRINGDB_LINK_LOG_LEVEL: INFO
       STRINGDB_LINK_LOG_FORMAT: json
       STRINGDB_LINK_RELOAD: "false"
-      GUNICORN_WORKERS: 4
-      GUNICORN_LOG_LEVEL: warning
     
     # Remove development volume mounts
     volumes: []
     
-    # Use the default production command (Gunicorn)
-    command: ["gunicorn", "-c", "gunicorn_conf.py", "stringdb_link.app:app"]
+    # Run REST plus hosted MCP through the project CLI.
+    command: ["stringdb-link", "server", "--transport", "unified", "--host", "0.0.0.0", "--port", "8000"]
     
     # Production resource limits
     deploy:

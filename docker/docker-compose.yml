@@ -22,9 +22,8 @@ services:
     ports:
       - "${STRINGDB_LINK_PORT:-8000}:8000"
     
-    # Use the default production command for simplicity
-    # For development with code changes, rebuild the container
-    command: ["uvicorn", "stringdb_link.app:app", "--host", "0.0.0.0", "--port", "8000"]
+    # Run REST plus hosted MCP through the project CLI.
+    command: ["stringdb-link", "server", "--transport", "unified", "--host", "0.0.0.0", "--port", "8000"]
     
     # Health check
     healthcheck:
