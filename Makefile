@@ -95,13 +95,13 @@ clean: ## Remove local caches and generated reports
 	rm -rf .pytest_cache .ruff_cache .mypy_cache htmlcov .coverage coverage.xml
 
 dev: ## Start REST plus MCP development server
-	uv run python server.py --transport unified --host 127.0.0.1 --port 8000
+	uv run stringdb-link server --transport unified --host 127.0.0.1 --port 8000 --reload
 
 mcp-serve: ## Start local stdio MCP server
 	uv run python mcp_server.py
 
 mcp-serve-http: ## Start hosted MCP endpoint with REST API
-	uv run python server.py --transport unified --host 0.0.0.0 --port 8000
+	uv run stringdb-link server --transport unified --host 0.0.0.0 --port 8000
 
 docker-build: ## Build Docker image
 	$(DOCKER_COMPOSE) -f docker/docker-compose.yml build
