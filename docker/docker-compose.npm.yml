@@ -5,14 +5,14 @@ services:
   stringdb-link:
     # Production environment optimized for NPM
     environment:
-      STRINGDB_LINK_LOG_LEVEL: INFO
-      STRINGDB_LINK_LOG_FORMAT: json
-      STRINGDB_LINK_RELOAD: "false"
+      LOGGING__LEVEL: INFO
+      LOGGING__FORMAT: json
+      RELOAD: "false"
 
       # NPM-specific environment variables (loaded from .env.npm)
-      STRINGDB_LINK_PUBLIC_DOMAIN: "${STRINGDB_LINK_PUBLIC_DOMAIN}"
-      STRINGDB_LINK_PUBLIC_URL: "${STRINGDB_LINK_PUBLIC_URL}"
-      STRINGDB_LINK_CORS_ORIGINS: "${STRINGDB_LINK_CORS_ORIGINS}"
+      PUBLIC_DOMAIN: "${PUBLIC_DOMAIN}"
+      PUBLIC_URL: "${PUBLIC_URL}"
+      CORS__ALLOW_ORIGINS: "${CORS__ALLOW_ORIGINS}"
     
     # Remove port mapping - NPM handles external access
     ports: []

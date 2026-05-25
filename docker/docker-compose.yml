@@ -13,14 +13,14 @@ services:
     
     environment:
       # Development overrides
-      STRINGDB_LINK_LOG_LEVEL: DEBUG
-      STRINGDB_LINK_HOST: 0.0.0.0
-      STRINGDB_LINK_PORT: 8000
-      STRINGDB_LINK_RELOAD: "false"  # Disable reload in container
+      LOGGING__LEVEL: DEBUG
+      HOST: 0.0.0.0
+      PORT: 8000
+      RELOAD: "false"  # Disable reload in container
     
     # Port mapping
     ports:
-      - "${STRINGDB_LINK_PORT:-8000}:8000"
+      - "${PORT:-8000}:8000"
     
     # Run REST plus hosted MCP through the project CLI.
     command: ["stringdb-link", "server", "--transport", "unified", "--host", "0.0.0.0", "--port", "8000"]

@@ -5,9 +5,9 @@ services:
   stringdb-link:
     # Production-specific environment variables
     environment:
-      STRINGDB_LINK_LOG_LEVEL: INFO
-      STRINGDB_LINK_LOG_FORMAT: json
-      STRINGDB_LINK_RELOAD: "false"
+      LOGGING__LEVEL: INFO
+      LOGGING__FORMAT: json
+      RELOAD: "false"
     
     # Remove development volume mounts
     volumes: []
