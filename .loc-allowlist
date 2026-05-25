@@ -1,0 +1,13 @@
+# Grandfathered Python modules exceeding the 600-LOC budget.
+#
+# Format: repo-relative path, colon, ceiling LOC
+# - Ceiling is the file's current line count at allowlist time.
+# - Files may shrink freely; growing past the ceiling fails CI.
+# - Removing an entry after a successful split is the goal.
+#
+# Decomposition backlog: docs/superpowers/specs/2026-05-25-modernize-python-stack-and-agent-workflow-design.md
+
+stringdb_link/api/client.py:796
+stringdb_link/services/stringdb_service.py:771
+stringdb_link/models/requests.py:682
+stringdb_link/models/responses.py:634
