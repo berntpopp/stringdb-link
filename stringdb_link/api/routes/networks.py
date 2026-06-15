@@ -33,7 +33,12 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 
-@router.post("/networks/interactions", response_model=NetworkInteractionListResponse)
+@router.post(
+    "/networks/interactions",
+    response_model=NetworkInteractionListResponse,
+    operation_id="search_protein_interactions",
+    tags=["network"],
+)
 async def get_network_interactions(
     request: NetworkRequest,
     service: StringDBService = StringDBServiceDep,
@@ -112,7 +117,12 @@ async def get_network_interactions(
         ) from e
 
 
-@router.post("/networks/partners", response_model=InteractionPartnerListResponse)
+@router.post(
+    "/networks/partners",
+    response_model=InteractionPartnerListResponse,
+    operation_id="get_interaction_partners",
+    tags=["network"],
+)
 async def get_interaction_partners(
     request: InteractionPartnersRequest,
     service: StringDBService = StringDBServiceDep,
@@ -310,7 +320,12 @@ async def get_single_protein_partners(
         ) from e
 
 
-@router.post("/networks/link", response_model=LinkInfo)
+@router.post(
+    "/networks/link",
+    response_model=LinkInfo,
+    operation_id="get_network_link",
+    tags=["network"],
+)
 async def get_network_link(
     request: LinkRequest,
     service: StringDBService = StringDBServiceDep,

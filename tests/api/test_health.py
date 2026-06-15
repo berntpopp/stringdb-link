@@ -15,7 +15,7 @@ def test_health_check(test_client: TestClient):
     # Validate response structure
     health_response = HealthResponse(**data)
     assert health_response.status == "healthy"
-    assert health_response.version == "0.1.0"
+    assert health_response.version == "1.0.0"
     assert health_response.uptime_seconds >= 0
 
 
@@ -28,4 +28,4 @@ def test_version_endpoint(test_client: TestClient):
 
     assert "version" in data
     assert "api_version" in data
-    assert data["version"] == "0.1.0"
+    assert data["version"] == "1.0.0"

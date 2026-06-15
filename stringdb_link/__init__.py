@@ -5,7 +5,7 @@ protein-protein interaction database, enabling modern AI applications to query p
 networks, functional enrichment, and interaction data.
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 __author__ = "StringDB-Link Development Team"
 __email__ = "dev@stringdb-link.org"
 __license__ = "MIT"

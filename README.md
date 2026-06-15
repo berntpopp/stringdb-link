@@ -142,12 +142,35 @@ Add to your Claude Desktop configuration:
 
 ### Available MCP Tools
 
-- `resolve_protein_identifiers`: Map protein names to STRING IDs
+Tool names follow the [GeneFoundry Tool-Naming Standard v1](#tool-naming-standard)
+(`verb_noun` snake_case, canonical verb, unprefixed):
+
+- `resolve_protein_identifiers`: Map protein names/symbols to STRING IDs
 - `search_protein_interactions`: Find protein network interactions
 - `get_interaction_partners`: Get interaction partners for proteins
-- `analyze_functional_enrichment`: Perform enrichment analysis
-- `get_functional_annotations`: Retrieve protein annotations
-- `generate_network_visualization`: Create network images
+- `get_network_link`: Get a shareable STRING network view URL
+- `compute_functional_enrichment`: Run STRING functional enrichment analysis
+- `compute_ppi_enrichment`: Run STRING protein-protein interaction enrichment test
+- `get_functional_annotations`: Retrieve STRING functional annotations
+- `get_protein_homology_scores`: Get cross-species homology bit-scores
+- `get_protein_homology_best_hits`: Get best cross-species homology hits
+- `get_network_image`: Get a STRING network visualization image
+
+### Tool-Naming Standard
+
+This server is part of the **GeneFoundry MCP router** (`genefoundry-router`) fleet.
+
+- **`serverInfo.name`** is set explicitly to `StringDB-Link Server`.
+- **Canonical gateway namespace token: `stringdb`.** Leaf tools are exposed
+  *unprefixed*; the router applies the namespace at mount time, so tools surface
+  at the gateway as `stringdb_<tool>` (e.g. `stringdb_search_protein_interactions`).
+  Do **not** add a `stringdb_` self-prefix to tool names — that would
+  double-prefix at the gateway.
+
+A CI guard (`tests/unit/test_tool_names.py`) asserts that every registered tool
+matches `^[a-z0-9_]{1,50}$`, starts with a canonical verb
+(`get`/`search`/`list`/`resolve`/`find`/`compare`/`compute`), and does not
+self-prefix the `stringdb` namespace token.
 
 ## 🧪 Development
 

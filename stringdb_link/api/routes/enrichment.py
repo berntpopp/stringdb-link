@@ -22,7 +22,12 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 
-@router.post("/enrichment/functional", response_model=EnrichmentTermListResponse)
+@router.post(
+    "/enrichment/functional",
+    response_model=EnrichmentTermListResponse,
+    operation_id="compute_functional_enrichment",
+    tags=["enrichment"],
+)
 async def get_functional_enrichment(
     request: EnrichmentRequest,
     service: StringDBService = StringDBServiceDep,
@@ -76,7 +81,12 @@ async def get_functional_enrichment(
         ) from e
 
 
-@router.post("/enrichment/ppi", response_model=PPIEnrichmentResult)
+@router.post(
+    "/enrichment/ppi",
+    response_model=PPIEnrichmentResult,
+    operation_id="compute_ppi_enrichment",
+    tags=["enrichment"],
+)
 async def get_ppi_enrichment(
     request: PPIEnrichmentRequest,
     service: StringDBService = StringDBServiceDep,

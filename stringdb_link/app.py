@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastmcp import FastMCP
-from fastmcp.server.openapi import MCPType, RouteMap
+from fastmcp.server.providers.openapi import MCPType, RouteMap
 
 from .api.routes import (
     annotations,
@@ -48,7 +48,7 @@ def create_app() -> FastAPI:
         description=(
             "High-performance unified API server for STRING protein-protein interaction database"
         ),
-        version="0.1.0",
+        version="1.0.0",
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
@@ -79,7 +79,7 @@ def create_app() -> FastAPI:
         """Root endpoint with service information."""
         return {
             "name": "StringDB-Link",
-            "version": "0.1.0",
+            "version": "1.0.0",
             "description": (
                 "High-performance unified API server "
                 "for STRING protein-protein interaction database"
@@ -94,42 +94,42 @@ def create_app() -> FastAPI:
 
 
 def create_mcp_app() -> FastMCP:
-    """Create FastMCP server from FastAPI app."""
+    """Create FastMCP server from FastAPI app.
+
+    Tool names are taken verbatim from each route's ``operation_id`` (set in the
+    route decorators), so they conform to the GeneFoundry Tool-Naming Standard v1
+    (``verb_noun`` snake_case, canonical verb, unprefixed). The gateway adds the
+    ``stringdb`` namespace at mount time (tools surface as ``stringdb_<tool>``).
+    The CI guard ``tests/unit/test_tool_names.py`` enforces this on every route.
+    """
     app = create_app()
 
-    # MCP tool name mappings (following litvar-link pattern)
-    mcp_custom_names = {
-        "resolve_identifiers": "resolve_protein_identifiers",
-        "get_network_interactions": "search_protein_interactions",
-        "get_interaction_partners": "get_interaction_partners",
-        "get_functional_enrichment": "analyze_functional_enrichment",
-        "get_functional_annotation": "get_functional_annotations",
-        "get_network_image": "generate_network_visualization",
-        "get_enrichment_image": "generate_enrichment_visualization",
-        "get_homology_scores": "get_protein_homology_scores",
-        "get_homology_best_hits": "get_protein_homology_best_hits",
-        "get_network_link": "get_shareable_network_link",
-        "get_ppi_enrichment": "analyze_ppi_enrichment",
-    }
-
-    # Route mappings for MCP tools (exclude utility endpoints)
+    # Route mappings for MCP tools. Everything not excluded becomes a tool, named
+    # after its ``operation_id``.
     mcp_route_maps = [
-        # Exclude health and monitoring endpoints
+        # Exclude health and monitoring endpoints.
         RouteMap(pattern=r"^/api/health.*$", mcp_type=MCPType.EXCLUDE),
-        # Exclude root and docs endpoints
+        # Exclude root and docs endpoints.
         RouteMap(pattern=r"^/$", mcp_type=MCPType.EXCLUDE),
         RouteMap(pattern=r"^/docs$", mcp_type=MCPType.EXCLUDE),
         RouteMap(pattern=r"^/openapi.json$", mcp_type=MCPType.EXCLUDE),
         RouteMap(pattern=r"^/redoc$", mcp_type=MCPType.EXCLUDE),
-        # Exclude some internal endpoints if needed
         RouteMap(pattern=r"^/api/version$", mcp_type=MCPType.EXCLUDE),
+        # Exclude single-identifier GET convenience routes: they duplicate the
+        # list-based POST tools and are not part of the curated MCP surface.
+        RouteMap(pattern=r"^/api/identifiers/resolve/[^/]+$", mcp_type=MCPType.EXCLUDE),
+        RouteMap(pattern=r"^/api/networks/interactions/[^/]+$", mcp_type=MCPType.EXCLUDE),
+        RouteMap(pattern=r"^/api/networks/partners/[^/]+$", mcp_type=MCPType.EXCLUDE),
+        # Exclude raw bulk-download routes: non-canonical verb, poor MCP
+        # ergonomics, and redundant with the JSON tools.
+        RouteMap(pattern=r"^/api/homology/scores/download$", mcp_type=MCPType.EXCLUDE),
+        RouteMap(pattern=r"^/api/homology/best-hits/download$", mcp_type=MCPType.EXCLUDE),
     ]
 
-    # Create FastMCP instance
+    # Create FastMCP instance.
     return FastMCP.from_fastapi(
         app=app,
         name=settings.mcp_server_name,
-        mcp_names=mcp_custom_names,
         route_maps=mcp_route_maps,
     )
 
