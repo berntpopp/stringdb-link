@@ -7,10 +7,15 @@ services:
     
     container_name: stringdb_link_server
     
-    # Environment configuration
+    # Environment configuration. Both optional so dev (no .env) and the NPM
+    # deploy (which provides ../.env.docker) both work without a missing-file
+    # error; .env.docker is also loaded as container env, not just for ${} interp.
     env_file:
-      - ../.env
-    
+      - path: ../.env
+        required: false
+      - path: ../.env.docker
+        required: false
+
     environment:
       # Development overrides
       LOGGING__LEVEL: DEBUG
