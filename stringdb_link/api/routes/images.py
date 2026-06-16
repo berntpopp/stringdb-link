@@ -18,7 +18,11 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 
-@router.post("/images/network")
+@router.post(
+    "/images/network",
+    operation_id="get_network_image",
+    tags=["visualization"],
+)
 async def get_network_image(
     request: ImageRequest,
     service: StringDBService = StringDBServiceDep,

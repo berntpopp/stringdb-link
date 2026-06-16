@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stringdb-link"
-version = "0.1.0"
+version = "1.0.0"
 description = "High-performance unified API server for STRING protein-protein interaction database with MCP integration"
 readme = "README.md"
 license = { text = "MIT" }
@@ -38,6 +38,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Bio-Informatics",
   "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
   "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed",
 ]
 requires-python = ">=3.12"
 dependencies = [

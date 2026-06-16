@@ -28,6 +28,8 @@ router = APIRouter(prefix="/homology", tags=["homology"])
 @router.post(
     "/scores",
     response_model=HomologyScoreListResponse,
+    operation_id="get_protein_homology_scores",
+    tags=["homology"],
     summary="Get homology scores (JSON)",
     description=(
         "Retrieve homology scores for proteins showing sequence similarity "
@@ -213,6 +215,8 @@ async def download_homology_scores(
 @router.post(
     "/best-hits",
     response_model=HomologyScoreListResponse,
+    operation_id="get_protein_homology_best_hits",
+    tags=["homology"],
     summary="Get best homology hits (JSON)",
     description=(
         "Get the best homology hits between proteins from different species. "

@@ -45,6 +45,7 @@ router = APIRouter()
     - If no species is specified, STRING attempts cross-species mapping
     """,
     operation_id="resolve_protein_identifiers",
+    tags=["protein"],
     responses={
         200: {
             "description": "Identifiers resolved successfully",

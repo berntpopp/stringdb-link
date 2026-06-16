@@ -19,7 +19,12 @@ if TYPE_CHECKING:
 router = APIRouter()
 
 
-@router.post("/annotations/functional", response_model=FunctionalAnnotationListResponse)
+@router.post(
+    "/annotations/functional",
+    response_model=FunctionalAnnotationListResponse,
+    operation_id="get_functional_annotations",
+    tags=["annotation"],
+)
 async def get_functional_annotations(
     request: AnnotationRequest,
     service: StringDBService = StringDBServiceDep,
