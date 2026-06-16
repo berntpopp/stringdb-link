@@ -1,3 +1,10 @@
+# Explicit project name isolates this stack. Without it, Compose defaults the project to the
+# parent-dir basename ("docker"), shared by every -link repo that roots its compose at
+# docker/docker-compose.yml — pooling unrelated containers/volumes into one "docker" project
+# and triggering spurious orphan-container warnings (and making --remove-orphans able to delete
+# a sibling stack). See https://docs.docker.com/reference/compose-file/version-and-name/
+name: stringdb-link
+
 services:
   stringdb-link:
     build:
