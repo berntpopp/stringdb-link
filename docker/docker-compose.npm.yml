@@ -1,6 +1,10 @@
 # NPM (Nginx Proxy Manager) production deployment
 # Usage: docker-compose -f docker-compose.yml -f docker-compose.npm.yml up -d
 
+# Pin the compose project name so layering base+npm does not default to the
+# parent dir ("docker") and collide with other services' default project.
+name: stringdb-link-npm
+
 services:
   stringdb-link:
     # Production environment optimized for NPM
@@ -14,8 +18,10 @@ services:
       PUBLIC_URL: "${PUBLIC_URL}"
       CORS__ALLOW_ORIGINS: "${CORS__ALLOW_ORIGINS}"
     
-    # Remove port mapping - NPM handles external access
-    ports: []
+    # Remove the base host-port mapping - NPM handles external access. `!reset`
+    # is required: a plain `ports: []` MERGES with (does not replace) the base
+    # list, leaving ${PORT:-8000}:8000 published (collides with other host binds).
+    ports: !reset []
     
     # Connect to NPM's shared network
     networks:
