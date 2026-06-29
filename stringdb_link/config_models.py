@@ -282,7 +282,7 @@ class MCPConfigModel(BaseModel):
 
     path: str = Field(default="/mcp", description="MCP endpoint path")
     server_name: str = Field(
-        default="StringDB-Link Server",
+        default="stringdb-link",
         description="MCP server name",
     )
 
