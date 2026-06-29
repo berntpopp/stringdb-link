@@ -30,13 +30,27 @@ services:
     
     # Run REST plus hosted MCP through the project CLI.
     command: ["stringdb-link", "server", "--transport", "unified", "--host", "0.0.0.0", "--port", "8000"]
-    
+
+    # Container & Deployment Hardening Standard v1 (§2-4): read-only rootfs with
+    # an explicit tmpfs scratch, all capabilities dropped, no privilege
+    # escalation, a real init, and a PID cap.
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    init: true
+    pids_limit: 256
+
     # Production resource limits
     deploy:
       resources:
         limits:
           memory: 1G
           cpus: '1.0'
+          pids: 256
         reservations:
           memory: 512M
           cpus: '0.5'
