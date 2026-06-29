@@ -7,7 +7,7 @@ caching, and data transformations.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from stringdb_link.config import settings
 from stringdb_link.exceptions import StringDBServiceError
@@ -128,8 +128,8 @@ class StringDBService:
             species=species,
             echo_query=echo_query,
         )
-
-        return [StringIdMapping(**mapping) for mapping in raw_mappings]
+        records = raw_mappings if isinstance(raw_mappings, list) else []
+        return [StringIdMapping(**mapping) for mapping in records]
 
     async def get_network_interactions(
         self, request: NetworkRequest
@@ -158,7 +158,7 @@ class StringDBService:
             interactions = await self._cached_get_network_interactions(
                 identifiers=tuple(request.identifiers),
                 species=request.species,
-                required_score=request.required_score,
+                required_score=round(request.required_score * 1000),
                 network_type=request.network_type.value,
                 add_nodes=request.add_nodes,
                 show_query_node_labels=request.show_query_node_labels,
@@ -207,8 +207,8 @@ class StringDBService:
             add_nodes=add_nodes,
             show_query_node_labels=show_query_node_labels,
         )
-
-        return [NetworkInteraction(**interaction) for interaction in raw_interactions]
+        records = raw_interactions if isinstance(raw_interactions, list) else []
+        return [NetworkInteraction(**interaction) for interaction in records]
 
     async def get_interaction_partners(
         self, request: InteractionPartnersRequest
@@ -238,7 +238,7 @@ class StringDBService:
                 identifiers=tuple(request.identifiers),
                 species=request.species,
                 limit=request.limit,
-                required_score=request.required_score,
+                required_score=round(request.required_score * 1000),
                 network_type=request.network_type.value,
             )
 
@@ -283,8 +283,8 @@ class StringDBService:
             required_score=required_score,
             network_type=network_type,
         )
-
-        return [InteractionPartner(**partner) for partner in raw_partners]
+        records = raw_partners if isinstance(raw_partners, list) else []
+        return [InteractionPartner(**partner) for partner in records]
 
     async def get_functional_enrichment(
         self, request: EnrichmentRequest
@@ -356,8 +356,8 @@ class StringDBService:
                 list(background_string_identifiers) if background_string_identifiers else None
             ),
         )
-
-        return [EnrichmentTerm(**term) for term in raw_terms]
+        records = raw_terms if isinstance(raw_terms, list) else []
+        return [EnrichmentTerm(**term) for term in records]
 
     async def get_functional_annotation(
         self, request: AnnotationRequest
@@ -428,8 +428,8 @@ class StringDBService:
             allow_pubmed=allow_pubmed,
             only_pubmed=only_pubmed,
         )
-
-        return [FunctionalAnnotation(**annotation) for annotation in raw_annotations]
+        records = raw_annotations if isinstance(raw_annotations, list) else []
+        return [FunctionalAnnotation(**annotation) for annotation in records]
 
     async def get_network_image(self, request: ImageRequest) -> NetworkImageResponse:
         """Generate network visualization image.
@@ -459,7 +459,7 @@ class StringDBService:
                 add_white_nodes=request.add_white_nodes,
                 network_flavor=request.network_flavor.value,
                 network_type=request.network_type.value,
-                required_score=request.required_score,
+                required_score=round(request.required_score * 1000),
                 image_format=request.image_format.value,
                 hide_node_labels=request.hide_node_labels,
                 hide_disconnected_nodes=request.hide_disconnected_nodes,
@@ -675,13 +675,13 @@ class StringDBService:
             raw_result = await self.client.get_ppi_enrichment(
                 identifiers=request.identifiers,
                 species=request.species,
-                required_score=request.required_score,
+                required_score=round(request.required_score * 1000),
                 background_string_identifiers=request.background_string_identifiers,
             )
 
             from stringdb_link.models.responses import PPIEnrichmentResult
 
-            result = PPIEnrichmentResult(**raw_result)
+            result = PPIEnrichmentResult(**cast("dict[str, Any]", raw_result))
 
             self.logger.info(
                 "Successfully retrieved PPI enrichment",
@@ -722,7 +722,7 @@ class StringDBService:
 
             # Prepare additional parameters for link generation
             link_params = {
-                "required_score": request.required_score,
+                "required_score": round(request.required_score * 1000),
                 "network_type": request.network_type.value,
                 "network_flavor": request.network_flavor.value,
             }
