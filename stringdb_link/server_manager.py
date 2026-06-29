@@ -17,6 +17,8 @@ from .config import settings
 from .logging_config import log_server_startup
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from structlog.typing import FilteringBoundLogger
 
 
@@ -58,7 +60,7 @@ class UnifiedServerManager:
         original_lifespan = app.router.lifespan_context
 
         @asynccontextmanager
-        async def combined_lifespan(fastapi_app: FastAPI):
+        async def combined_lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
             async with mcp_http_app.lifespan(mcp_http_app), original_lifespan(fastapi_app):
                 yield
 

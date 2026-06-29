@@ -15,7 +15,9 @@ from fastmcp import FastMCP
 from fastmcp.server.providers.openapi import MCPType, RouteMap
 
 from .api.routes import (
-    annotations,
+    annotations as annotations_routes,
+)
+from .api.routes import (
     enrichment,
     health,
     homology,
@@ -68,7 +70,7 @@ def create_app() -> FastAPI:
     app.include_router(identifiers.router, prefix="/api", tags=["identifiers"])
     app.include_router(networks.router, prefix="/api", tags=["networks"])
     app.include_router(enrichment.router, prefix="/api", tags=["enrichment"])
-    app.include_router(annotations.router, prefix="/api", tags=["annotations"])
+    app.include_router(annotations_routes.router, prefix="/api", tags=["annotations"])
     app.include_router(homology.router, prefix="/api", tags=["homology"])
     app.include_router(images.router, prefix="/api", tags=["images"])
     app.include_router(health.router)  # Health router already has /api/health prefix
@@ -139,7 +141,7 @@ app = create_app()
 
 # Create MCP app conditionally to avoid schema generation issues
 try:
-    mcp_app = create_mcp_app()
+    mcp_app: FastMCP[Any] | None = create_mcp_app()
 except Exception as e:
     import warnings
 
