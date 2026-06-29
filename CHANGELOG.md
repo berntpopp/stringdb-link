@@ -5,6 +5,22 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security (Container & Deployment Hardening Standard v1)
+
+- Ported the router/gtex hardening wholesale into the prod and npm Compose
+  overlays (`read_only` rootfs + tmpfs scratch, `cap_drop: ALL`,
+  `no-new-privileges`, `init`, pids/mem/cpu limits; prod is now expose-only via
+  `ports: !reset []`).
+- Set `mask_error_details=True` on the FastMCP `from_fastapi` construction so
+  internal exception text is not returned to MCP callers.
+- Fixed the unsafe CORS default (`allow_origins=["*"]` with
+  `allow_credentials=True`); the default is now an explicit localhost origin
+  list, with production origins injected at runtime.
+- Pinned the `python:3.12-slim` base image by digest, added a root
+  `.dockerignore`, and added a `container-security` CI workflow (Trivy + SBOM).
+
 ## [1.0.0] - 2026-06-15
 
 ### Changed (BREAKING) — GeneFoundry Tool-Naming Standard v1

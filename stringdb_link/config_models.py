@@ -129,7 +129,11 @@ class CORSConfigModel(BaseModel):
     """CORS configuration model."""
 
     allow_origins: list[str] = Field(
-        default=["*"],
+        # Never default to "*" together with allow_credentials=True (Container &
+        # Deployment Hardening Standard v1 / CORS spec): a wildcard credentialed
+        # origin is rejected by browsers and is an unsafe default. Production
+        # origins are injected at runtime via CORS__ALLOW_ORIGINS (env).
+        default=["http://localhost:3000", "http://127.0.0.1:3000"],
         description="Allowed CORS origins",
     )
     allow_credentials: bool = Field(
