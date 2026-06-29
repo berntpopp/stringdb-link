@@ -155,7 +155,7 @@ class CORSConfigModel(BaseModel):
         """Parse CORS origins from string or list."""
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+        return [str(origin) for origin in v]
 
     @field_validator("allow_methods", mode="before")
     @classmethod
@@ -171,7 +171,7 @@ class CORSConfigModel(BaseModel):
         """Parse CORS headers from string or list."""
         if isinstance(v, str):
             return [header.strip() for header in v.split(",") if header.strip()]
-        return v
+        return [str(header) for header in v]
 
 
 class LoggingConfigModel(BaseModel):

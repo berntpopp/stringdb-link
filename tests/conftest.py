@@ -6,10 +6,10 @@ import asyncio
 from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
 import pytest
 import pytest_asyncio
+from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 from stringdb_link.api.client import StringDBClient
 from stringdb_link.app import app

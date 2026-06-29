@@ -43,9 +43,8 @@ async def get_functional_enrichment(
         )
         logger.info("Performing functional enrichment analysis", identifiers=request.identifiers)
 
-        terms = await service.get_functional_enrichment(request)
-
-        return EnrichmentTermListResponse(terms=terms, total_count=len(terms))
+        # Service already returns the wrapped response.
+        return await service.get_functional_enrichment(request)
 
     except StringDBServiceError as e:
         logger.exception(

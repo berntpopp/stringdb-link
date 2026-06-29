@@ -1,6 +1,6 @@
 """Comprehensive tests for server manager functionality."""
 
-# ruff: noqa: ARG002  # Unused method arguments are pytest fixtures
+# Unused method arguments are pytest fixtures
 
 from unittest.mock import AsyncMock, MagicMock, patch
 

@@ -8,21 +8,21 @@ from __future__ import annotations
 
 import logging
 import logging.handlers
-from pathlib import Path
 import sys
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, cast
 
+import structlog
 from rich.console import Console
 from rich.logging import RichHandler
-import structlog
+
+from .config import settings
 
 # HTTP status constants
 HTTP_CLIENT_ERROR = 400
 
-from .config import settings
-
 if TYPE_CHECKING:
-    from structlog.typing import FilteringBoundLogger
+    from structlog.typing import FilteringBoundLogger, Processor
 
 
 def configure_stdlib_logging() -> None:
@@ -108,7 +108,7 @@ def configure_third_party_loggers() -> None:
 def configure_structlog() -> None:
     """Configure structlog for structured logging."""
     # Shared processors
-    shared_processors = [
+    shared_processors: list[Processor] = [
         structlog.stdlib.filter_by_level,
         structlog.stdlib.add_logger_name,
         structlog.stdlib.add_log_level,
@@ -121,6 +121,7 @@ def configure_structlog() -> None:
         shared_processors.append(structlog.dev.set_exc_info)
 
     # Configure processors based on format
+    processors: list[Processor]
     if settings.log_format == "json":
         processors = [
             *shared_processors,
@@ -149,12 +150,12 @@ def configure_logging() -> FilteringBoundLogger:
     configure_structlog()
 
     # Return configured logger
-    return structlog.get_logger("stringdb_link")
+    return cast("FilteringBoundLogger", structlog.get_logger("stringdb_link"))
 
 
 def get_logger(name: str) -> FilteringBoundLogger:
     """Get a logger instance for a specific module."""
-    return structlog.get_logger(name)
+    return cast("FilteringBoundLogger", structlog.get_logger(name))
 
 
 def log_request(
@@ -269,7 +270,7 @@ def log_performance(
     """Log performance metrics."""
     logger.info(
         "Performance metric",
-        event="performance",
+        event_type="performance",
         operation=operation,
         duration_ms=round(duration * 1000, 2),
         **kwargs,
@@ -286,7 +287,7 @@ def log_cache_operation(
     """Log cache operation."""
     logger.debug(
         "Cache operation",
-        event="cache_operation",
+        event_type="cache_operation",
         operation=operation,
         key=key,
         hit=hit,

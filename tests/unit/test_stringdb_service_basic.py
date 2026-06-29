@@ -1,6 +1,6 @@
 """Basic tests for StringDBService focusing on core functionality."""
 
-# ruff: noqa: ARG002,SLF001  # Unused method arguments are pytest fixtures, private member access is for testing
+# Unused method arguments are pytest fixtures, private member access is for testing
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -279,7 +279,7 @@ class TestStringDBServiceCore:
 
         # Assert
         # Should pass None, not convert to tuple
-        args, kwargs = mock_cached.call_args
+        _args, kwargs = mock_cached.call_args
         assert kwargs["background_string_identifiers"] is None
 
     async def test_service_converts_background_identifiers_to_tuple(self, service):
@@ -296,7 +296,7 @@ class TestStringDBServiceCore:
             await service.get_functional_enrichment(request)
 
         # Assert
-        args, kwargs = mock_cached.call_args
+        _args, kwargs = mock_cached.call_args
         assert kwargs["background_string_identifiers"] == tuple(background_ids)
 
     async def test_all_service_methods_handle_exceptions(self, service, mock_client):

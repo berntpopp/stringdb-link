@@ -2,8 +2,8 @@
 
 from unittest.mock import AsyncMock, patch
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from stringdb_link.models.responses import StringIdMappingListResponse
 

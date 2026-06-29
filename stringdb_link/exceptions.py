@@ -36,7 +36,7 @@ class StringDBLinkError(Exception):
 
     def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for API responses."""
-        result = {
+        result: dict[str, Any] = {
             "error": self.__class__.__name__,
             "message": self.message,
         }
@@ -65,7 +65,7 @@ class StringDBAPIError(StringDBLinkError):
             response_data: Raw response data from API
             endpoint: API endpoint that caused the error
         """
-        details = {}
+        details: dict[str, Any] = {}
         if response_data:
             details["response_data"] = response_data
         if endpoint:
@@ -92,7 +92,7 @@ class StringDBTimeoutError(StringDBAPIError):
             timeout: Timeout value that was exceeded
             endpoint: API endpoint that timed out
         """
-        details = {}
+        details: dict[str, Any] = {}
         if timeout:
             details["timeout"] = timeout
         if endpoint:
@@ -118,7 +118,7 @@ class StringDBRateLimitError(StringDBAPIError):
             retry_after: Seconds to wait before retrying
             endpoint: API endpoint that was rate limited
         """
-        details = {}
+        details: dict[str, Any] = {}
         if retry_after:
             details["retry_after"] = retry_after
 
@@ -144,7 +144,7 @@ class ValidationError(StringDBLinkError):
             value: Value that failed validation
             validation_errors: List of Pydantic validation errors
         """
-        details = {}
+        details: dict[str, Any] = {}
         if field:
             details["field"] = field
         if value is not None:
@@ -179,7 +179,7 @@ class ProteinNotFoundError(StringDBLinkError):
             if species:
                 message += f" in species {species}"
 
-        details = {"identifier": identifier}
+        details: dict[str, Any] = {"identifier": identifier}
         if species:
             details["species"] = species
 
@@ -204,7 +204,7 @@ class NetworkError(StringDBLinkError):
             original_error: Original exception that caused this error
             endpoint: Network endpoint that failed
         """
-        details = {}
+        details: dict[str, Any] = {}
         if original_error:
             details["original_error"] = str(original_error)
             details["error_type"] = type(original_error).__name__
@@ -234,7 +234,7 @@ class CacheError(StringDBLinkError):
             operation: Cache operation that failed (get, set, delete)
             original_error: Original exception that caused this error
         """
-        details = {}
+        details: dict[str, Any] = {}
         if cache_key:
             details["cache_key"] = cache_key
         if operation:
@@ -264,7 +264,7 @@ class ConfigurationError(StringDBLinkError):
             setting: Configuration setting that is invalid
             value: Invalid value
         """
-        details = {}
+        details: dict[str, Any] = {}
         if setting:
             details["setting"] = setting
         if value is not None:
@@ -291,7 +291,7 @@ class MCPError(StringDBLinkError):
             tool_name: MCP tool name that failed
             original_error: Original exception that caused this error
         """
-        details = {}
+        details: dict[str, Any] = {}
         if tool_name:
             details["tool_name"] = tool_name
         if original_error:
@@ -318,7 +318,7 @@ class ServiceUnavailableError(StringDBLinkError):
             service: Name of the unavailable service
             retry_after: Seconds to wait before retrying
         """
-        details = {}
+        details: dict[str, Any] = {}
         if service:
             details["service"] = service
         if retry_after:
@@ -345,7 +345,7 @@ class StringDBServiceError(StringDBLinkError):
             operation: Service operation that failed
             original_error: Original exception that caused this error
         """
-        details = {}
+        details: dict[str, Any] = {}
         if operation:
             details["operation"] = operation
         if original_error:

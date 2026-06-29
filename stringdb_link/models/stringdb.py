@@ -6,18 +6,18 @@ STRING protein-protein interaction database.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Final
 
 
-class NetworkType(str, Enum):
+class NetworkType(StrEnum):
     """Network types supported by STRING."""
 
     FUNCTIONAL = "functional"
     PHYSICAL = "physical"
 
 
-class NetworkFlavor(str, Enum):
+class NetworkFlavor(StrEnum):
     """Network visualization styles supported by STRING."""
 
     EVIDENCE = "evidence"
@@ -25,7 +25,7 @@ class NetworkFlavor(str, Enum):
     ACTIONS = "actions"
 
 
-class OutputFormat(str, Enum):
+class OutputFormat(StrEnum):
     """Output formats supported by STRING API."""
 
     JSON = "json"
@@ -39,7 +39,7 @@ class OutputFormat(str, Enum):
     SVG = "svg"
 
 
-class ImageFormat(str, Enum):
+class ImageFormat(StrEnum):
     """Image formats for network visualization."""
 
     PNG = "image"
@@ -47,7 +47,7 @@ class ImageFormat(str, Enum):
     SVG = "svg"
 
 
-class EnrichmentCategory(str, Enum):
+class EnrichmentCategory(StrEnum):
     """Enrichment analysis categories."""
 
     PROCESS = "Process"  # Biological Process (Gene Ontology)

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
 from typing import TYPE_CHECKING, Any
 
-from fastapi import APIRouter
 import httpx
+from fastapi import APIRouter
 
 from stringdb_link.config import settings
 from stringdb_link.models.responses import HealthResponse
@@ -36,7 +35,7 @@ async def health_check(
     overall_status = "healthy"
     try:
         await client.get_version()
-    except (httpx.HTTPError, asyncio.TimeoutError) as e:
+    except (TimeoutError, httpx.HTTPError) as e:
         logger.warning("StringDB API health check failed", error=str(e))
         stringdb_status = "unavailable"
         overall_status = "degraded"

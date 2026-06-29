@@ -1,7 +1,7 @@
 """Tests for configuration management."""
 
-from pydantic import ValidationError
 import pytest
+from pydantic import ValidationError
 
 from stringdb_link.config import Settings
 
