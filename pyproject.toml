@@ -110,7 +110,11 @@ extend-select = [
   "SIM",
   "RUF",
 ]
-ignore = ["S101", "E501"]
+ignore = [
+  "E501",   # Line too long (handled by formatter)
+  "B008",   # FastAPI Query/Depends pattern (call in argument default by design)
+  "S101",   # asserts ok in tests (also per-file-ignores)
+]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -118,7 +122,10 @@ indent-style = "space"
 line-ending = "lf"
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*" = ["S101", "T20"]
+# Fleet-canonical test ignores: binding to all interfaces, try/except/pass in
+# fixtures, prints, and assert-style helpers are expected in test code. S105 is
+# added for redaction tests that assign fake secrets to mock settings.
+"tests/**/*" = ["S101", "S104", "S105", "S110", "T20", "B011", "SIM105", "SIM108"]
 
 [tool.mypy]
 python_version = "3.12"

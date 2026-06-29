@@ -156,7 +156,7 @@ async def download_homology_scores(
     request: HomologyRequest,
     service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
-    output_format: OutputFormat = Query(  # noqa: B008
+    output_format: OutputFormat = Query(
         OutputFormat.TSV,
         description="Output format (TSV, XML, PSI-MI)",
     ),
@@ -340,7 +340,7 @@ async def download_homology_best_hits(
     request: HomologyBestRequest,
     service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
-    output_format: OutputFormat = Query(  # noqa: B008
+    output_format: OutputFormat = Query(
         OutputFormat.TSV,
         description="Output format (TSV, XML, PSI-MI)",
     ),
