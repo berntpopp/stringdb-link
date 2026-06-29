@@ -9,17 +9,17 @@ from __future__ import annotations
 import asyncio
 import sys
 
+import typer
 from rich.console import Console
 from rich.table import Table
-import typer
-
-# HTTP status constants
-HTTP_OK = 200
 
 from . import API_VERSION, VERSION
 from .config import Settings, get_settings, reload_settings
 from .logging_config import configure_logging
 from .server_manager import UnifiedServerManager
+
+# HTTP status constants
+HTTP_OK = 200
 
 app = typer.Typer(
     name="stringdb-link",

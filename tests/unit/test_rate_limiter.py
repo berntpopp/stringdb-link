@@ -1,6 +1,6 @@
 """Fixed tests for rate limiter utilities."""
 
-# ruff: noqa: SLF001  # Private member access is needed for testing internal state
+# Private member access is needed for testing internal state
 
 import asyncio
 import time

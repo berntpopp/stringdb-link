@@ -143,5 +143,5 @@ try:
 except Exception as e:
     import warnings
 
-    warnings.warn(f"MCP app creation failed: {e}", UserWarning)
+    warnings.warn(f"MCP app creation failed: {e}", UserWarning, stacklevel=2)
     mcp_app = None

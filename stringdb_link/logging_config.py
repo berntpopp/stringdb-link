@@ -8,18 +8,18 @@ from __future__ import annotations
 
 import logging
 import logging.handlers
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import structlog
 from rich.console import Console
 from rich.logging import RichHandler
-import structlog
+
+from .config import settings
 
 # HTTP status constants
 HTTP_CLIENT_ERROR = 400
-
-from .config import settings
 
 if TYPE_CHECKING:
     from structlog.typing import FilteringBoundLogger

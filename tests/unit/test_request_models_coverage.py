@@ -1,7 +1,7 @@
 """Tests to improve coverage of request models."""
 
-from pydantic import ValidationError
 import pytest
+from pydantic import ValidationError
 
 from stringdb_link.models.requests import (
     AnnotationRequest,

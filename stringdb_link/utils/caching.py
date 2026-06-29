@@ -7,9 +7,10 @@ statistics tracking and observability features.
 from __future__ import annotations
 
 import asyncio
-from functools import wraps
 import time
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from collections.abc import Callable
+from functools import wraps
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from async_lru import alru_cache
 

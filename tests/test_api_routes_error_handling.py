@@ -1,11 +1,11 @@
 """Comprehensive tests for API route error handling."""
 
-# ruff: noqa: ARG002  # Unused method arguments are pytest fixtures
+# Unused method arguments are pytest fixtures
 
 from unittest.mock import AsyncMock, MagicMock
 
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
 from stringdb_link.api.routes.dependencies import get_logger_dependency, get_stringdb_service
 from stringdb_link.app import app

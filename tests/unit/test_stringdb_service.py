@@ -1,6 +1,6 @@
 """Comprehensive tests for StringDBService."""
 
-# ruff: noqa: SLF001  # Private member access is needed for testing internal methods
+# Private member access is needed for testing internal methods
 
 from unittest.mock import AsyncMock, MagicMock
 

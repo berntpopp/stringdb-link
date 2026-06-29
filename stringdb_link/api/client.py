@@ -9,11 +9,10 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 from urllib.parse import urljoin
 
 import httpx
-from typing_extensions import Self
 
 from stringdb_link.config import settings
 from stringdb_link.exceptions import (

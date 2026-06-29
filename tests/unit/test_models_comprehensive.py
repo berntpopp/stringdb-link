@@ -27,8 +27,9 @@ class TestAdvancedRequestValidation:
 
     def test_identifier_request_unicode_identifiers(self):
         """Test identifier request with unicode characters."""
-        request = IdentifierRequest(identifiers=["protein_α", "protein_β", "protein_π"])
-        assert "protein_α" in request.identifiers
+        # Greek letters are intentional: this test asserts unicode identifiers round-trip.
+        request = IdentifierRequest(identifiers=["protein_α", "protein_β", "protein_π"])  # noqa: RUF001
+        assert "protein_α" in request.identifiers  # noqa: RUF001
         assert "protein_β" in request.identifiers
         assert "protein_π" in request.identifiers
 
