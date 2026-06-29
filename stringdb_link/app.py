@@ -126,11 +126,14 @@ def create_mcp_app() -> FastMCP:
         RouteMap(pattern=r"^/api/homology/best-hits/download$", mcp_type=MCPType.EXCLUDE),
     ]
 
-    # Create FastMCP instance.
+    # Create FastMCP instance. mask_error_details=True keeps internal exception
+    # text out of MCP error responses (Container & Deployment Hardening Standard
+    # v1): callers get a generic message, not stack/internal detail.
     return FastMCP.from_fastapi(
         app=app,
         name=settings.mcp_server_name,
         route_maps=mcp_route_maps,
+        mask_error_details=True,
     )
 
 
