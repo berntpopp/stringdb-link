@@ -6,7 +6,8 @@ similarity scores and best hits between species.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Final
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import PlainTextResponse
@@ -23,6 +24,37 @@ if TYPE_CHECKING:
     from structlog.typing import FilteringBoundLogger
 
 router = APIRouter(prefix="/homology", tags=["homology"])
+
+#: Mapping from STRING homology JSON keys (camelCase, with the ``_A``/``_B``
+#: suffix convention) to ``HomologyScore`` model fields (snake_case, no aliases).
+#: STRING's ``/api/.../homology`` and ``/homology_best`` endpoints share this
+#: shape; see ``map_homology_record`` for why an explicit map is required.
+STRING_HOMOLOGY_FIELD_MAP: Final[dict[str, str]] = {
+    "ncbiTaxonId_A": "ncbi_taxon_id_a",
+    "stringId_A": "string_id_a",
+    "ncbiTaxonId_B": "ncbi_taxon_id_b",
+    "stringId_B": "string_id_b",
+    "bitscore": "bitscore",
+}
+
+
+def map_homology_record(record: Mapping[str, Any]) -> HomologyScore:
+    """Map a raw STRING homology row onto a ``HomologyScore``.
+
+    STRING returns camelCase keys (``ncbiTaxonId_A``, ``stringId_A``,
+    ``ncbiTaxonId_B``, ``stringId_B``, ``bitscore``) while ``HomologyScore``
+    declares plain snake_case fields with no aliases. Constructing
+    ``HomologyScore(**record)`` directly therefore raises a validation error on
+    non-empty results; this transform reshapes each record first, mirroring how
+    the network/interaction models bridge STRING's camelCase JSON. Unknown keys
+    are dropped; missing required keys surface as a validation error.
+    """
+    mapped = {
+        field: record[string_key]
+        for string_key, field in STRING_HOMOLOGY_FIELD_MAP.items()
+        if string_key in record
+    }
+    return HomologyScore(**mapped)
 
 
 @router.post(
@@ -88,7 +120,7 @@ async def get_homology_scores(
             output_format=OutputFormat.JSON,
         )
         records = result if isinstance(result, list) else []
-        scores = [HomologyScore(**record) for record in records]
+        scores = [map_homology_record(record) for record in records]
 
         return HomologyScoreListResponse(
             scores=scores,
@@ -273,7 +305,7 @@ async def get_homology_best_hits(
             output_format=OutputFormat.JSON,
         )
         records = result if isinstance(result, list) else []
-        scores = [HomologyScore(**record) for record in records]
+        scores = [map_homology_record(record) for record in records]
 
         return HomologyScoreListResponse(
             scores=scores,
