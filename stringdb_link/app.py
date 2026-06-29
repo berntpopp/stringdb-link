@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastmcp import FastMCP
 from fastmcp.server.providers.openapi import MCPType, RouteMap
 
+from . import __version__
 from .api.routes import (
     annotations as annotations_routes,
 )
@@ -81,15 +82,26 @@ def create_app() -> FastAPI:
         """Root endpoint with service information."""
         return {
             "name": "StringDB-Link",
-            "version": "1.0.0",
+            "version": __version__,
             "description": (
                 "High-performance unified API server "
                 "for STRING protein-protein interaction database"
             ),
             "docs": "/docs",
-            "health": "/api/health",
+            "health": "/health",
             "mcp_endpoint": settings.mcp_path,
             "stringdb_api": settings.stringdb_base_url,
+        }
+
+    # Root-level health endpoint required by MCP Transport Standard v1 conformance
+    # probe (GET /health) and the docker wait-for-health check.
+    @app.get("/health")
+    async def root_health() -> dict[str, Any]:
+        """Minimal health check at root path (MCP conformance probe target)."""
+        return {
+            "status": "healthy",
+            "version": __version__,
+            "transport": "streamable-http-stateless",
         }
 
     return app
@@ -111,6 +123,7 @@ def create_mcp_app() -> FastMCP:
     mcp_route_maps = [
         # Exclude health and monitoring endpoints.
         RouteMap(pattern=r"^/api/health.*$", mcp_type=MCPType.EXCLUDE),
+        RouteMap(pattern=r"^/health$", mcp_type=MCPType.EXCLUDE),
         # Exclude root and docs endpoints.
         RouteMap(pattern=r"^/$", mcp_type=MCPType.EXCLUDE),
         RouteMap(pattern=r"^/docs$", mcp_type=MCPType.EXCLUDE),

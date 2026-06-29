@@ -503,6 +503,11 @@ class HealthResponse(BaseResponse):
         description="StringDB-Link version",
         json_schema_extra={"example": "0.1.0"},
     )
+    transport: str = Field(
+        default="streamable-http-stateless",
+        description="MCP transport mode",
+        json_schema_extra={"example": "streamable-http-stateless"},
+    )
     stringdb_api: str = Field(
         ...,
         description="StringDB API status",
