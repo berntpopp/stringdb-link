@@ -53,9 +53,15 @@ class UnifiedServerManager:
             msg = "MCP app is not available"
             raise RuntimeError(msg)
 
-        # FastMCP 3 exposes hosted MCP as an ASGI app. Use path="/" so the
-        # final endpoint is settings.mcp_path rather than a double-prefixed path.
-        mcp_http_app = mcp_app.http_app(path="/")
+        # FastMCP 3 stateless transport: bake the mcp_path into the sub-app
+        # and mount the result at "/" so there is no double-prefix that would
+        # produce 307 redirects.  stateless_http=True disables session tracking;
+        # json_response=True ensures Content-Type: application/json (not SSE).
+        mcp_http_app = mcp_app.http_app(
+            path=settings.mcp_path,
+            stateless_http=True,
+            json_response=True,
+        )
 
         original_lifespan = app.router.lifespan_context
 
@@ -65,7 +71,7 @@ class UnifiedServerManager:
                 yield
 
         app.router.lifespan_context = combined_lifespan
-        app.mount(settings.mcp_path, mcp_http_app)
+        app.mount("/", mcp_http_app)
 
         config = uvicorn.Config(
             app=app,

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from fastapi import APIRouter
 
+from stringdb_link import __version__
 from stringdb_link.config import settings
 from stringdb_link.models.responses import HealthResponse
 
@@ -51,7 +52,8 @@ async def health_check(
 
     return HealthResponse(
         status=overall_status,
-        version="1.0.0",
+        version=__version__,
+        transport="streamable-http-stateless",
         stringdb_api=stringdb_status,
         cache=cache_status,
         uptime_seconds=uptime,

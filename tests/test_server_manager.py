@@ -51,9 +51,11 @@ class TestUnifiedServerManager:
         # Verify logging
         mock_log_startup.assert_called_once_with(mock_logger, "unified", "0.0.0.0", 9000)
 
-        # Verify MCP endpoint mounting
-        mock_mcp_app.http_app.assert_called_once_with(path="/")
-        mock_app.mount.assert_called_once_with("/mcp", mock_mcp_http_app)
+        # Verify MCP endpoint mounting (stateless transport pattern)
+        mock_mcp_app.http_app.assert_called_once_with(
+            path="/mcp", stateless_http=True, json_response=True
+        )
+        mock_app.mount.assert_called_once_with("/", mock_mcp_http_app)
 
         # Verify uvicorn config
         mock_server_class.assert_called_once()
@@ -88,9 +90,11 @@ class TestUnifiedServerManager:
         manager = UnifiedServerManager()
         await manager.start_unified_server()
 
-        # Verify MCP endpoint mounting
-        mock_mcp_app.http_app.assert_called_once_with(path="/")
-        mock_app.mount.assert_called_once_with("/mcp", mock_mcp_http_app)
+        # Verify MCP endpoint mounting (stateless transport pattern)
+        mock_mcp_app.http_app.assert_called_once_with(
+            path="/mcp", stateless_http=True, json_response=True
+        )
+        mock_app.mount.assert_called_once_with("/", mock_mcp_http_app)
 
         # Verify server start
         mock_server.serve.assert_called_once()
@@ -259,9 +263,11 @@ class TestUnifiedServerManagerIntegration:
         manager = UnifiedServerManager()
         await manager.start_unified_server()
 
-        # Verify the mount call
-        mock_mcp_app.http_app.assert_called_once_with(path="/")
-        mock_app.mount.assert_called_once_with("/custom-mcp", mock_mcp_http_app)
+        # Verify the mount call (stateless transport pattern: path baked, mount at root)
+        mock_mcp_app.http_app.assert_called_once_with(
+            path="/custom-mcp", stateless_http=True, json_response=True
+        )
+        mock_app.mount.assert_called_once_with("/", mock_mcp_http_app)
 
 
 class TestUnifiedServerManagerEdgeCases:
