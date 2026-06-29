@@ -6,7 +6,7 @@ for better organization and maintainability.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, cast
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -176,6 +176,11 @@ class Settings(BaseSettings):
     def log_level(self) -> str:
         """Get log level for backward compatibility."""
         return self.logging.level
+
+    @log_level.setter
+    def log_level(self, value: str) -> None:
+        """Set log level via the nested logging config (backward compatibility)."""
+        self.logging.level = cast(Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], value)
 
     @property
     def log_format(self) -> str:

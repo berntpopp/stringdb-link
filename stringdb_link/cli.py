@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from typing import Literal, cast
 
 import typer
 from rich.console import Console
@@ -148,7 +149,8 @@ def server(
     if port:
         settings.port = port
     if transport:
-        settings.transport = transport
+        # Validated below; pydantic does not validate on assignment.
+        settings.transport = cast(Literal["http", "stdio", "unified"], transport)
     if log_level:
         settings.log_level = log_level.upper()
     if reload:
@@ -239,22 +241,24 @@ def health() -> None:
 
 async def start_server(server_manager: UnifiedServerManager, settings: Settings) -> None:
     """Start the server based on transport mode."""
-    if settings.transport == "unified":
+    # Widen to str so the defensive else stays reachable for unexpected values.
+    transport: str = settings.transport
+    if transport == "unified":
         await server_manager.start_unified_server(
             host=settings.host,
             port=settings.port,
             reload=settings.reload,
         )
-    elif settings.transport == "http":
+    elif transport == "http":
         await server_manager.start_http_only_server(
             host=settings.host,
             port=settings.port,
             reload=settings.reload,
         )
-    elif settings.transport == "stdio":
+    elif transport == "stdio":
         await server_manager.start_stdio_server()
     else:
-        msg = f"Invalid transport mode: {settings.transport}"
+        msg = f"Invalid transport mode: {transport}"
         raise ValueError(msg)
 
 
