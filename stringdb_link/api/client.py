@@ -8,8 +8,9 @@ and comprehensive error handling.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, NoReturn, Self, cast
 from urllib.parse import urljoin
 
 import httpx
@@ -44,7 +45,21 @@ class StringDBClient:
     _MAX_RESPONSE_TIMES = 1000
     _RESPONSE_TIMES_KEEP = 500
 
-    def _raise_rate_limit_error(self, endpoint: str, response: httpx.Response) -> None:
+    # Methods that may be wrapped with an opt-in alru_cache decorator.
+    _CACHED_METHOD_NAMES: tuple[str, ...] = (
+        "get_string_ids",
+        "get_network_interactions",
+        "get_interaction_partners",
+        "get_functional_enrichment",
+        "get_functional_annotation",
+        "get_network_image",
+        "get_homology_scores",
+        "get_homology_best_hits",
+        "get_ppi_enrichment",
+        "get_version",
+    )
+
+    def _raise_rate_limit_error(self, endpoint: str, response: httpx.Response) -> NoReturn:
         """Raise rate limit error with proper details."""
         retry_after = int(response.headers.get("Retry-After", 60))
         msg = f"Rate limit exceeded for endpoint {endpoint}"
@@ -54,7 +69,7 @@ class StringDBClient:
             endpoint=endpoint,
         )
 
-    def _raise_server_error(self, endpoint: str, response: httpx.Response) -> None:
+    def _raise_server_error(self, endpoint: str, response: httpx.Response) -> NoReturn:
         """Raise server error with proper details."""
         msg = f"StringDB server error: {response.status_code}"
         raise StringDBAPIError(
@@ -65,7 +80,7 @@ class StringDBClient:
 
     def _raise_client_error(
         self, endpoint: str, response: httpx.Response, error_data: dict[str, Any]
-    ) -> None:
+    ) -> NoReturn:
         """Raise client error with proper details."""
         msg = f"StringDB API error: {response.status_code}"
         raise StringDBAPIError(
@@ -190,7 +205,7 @@ class StringDBClient:
         output_format: str = "json",
         method: str = "POST",
         retries: int = 0,
-    ) -> Any:
+    ) -> list[dict[str, Any]] | str:
         """Make a request to StringDB API with error handling and retries.
 
         Args:
@@ -253,14 +268,11 @@ class StringDBClient:
                 self.successful_requests += 1
                 await self.rate_limiter.on_success()
 
-                # Handle response based on output format
+                # JSON responses decode to a list of records; every other
+                # format (tsv/xml/psi-mi/...) is returned as text. Binary image
+                # formats are served by get_network_image, not this path.
                 if output_format == "json":
-                    return response.json()
-                if output_format in ["image", "highres_image", "svg"]:
-                    return response.content
-                if output_format in ["tsv", "tsv-no-header", "xml", "psi-mi", "psi-mi-tab"]:
-                    return response.text
-                # Default to text for unknown formats
+                    return cast("list[dict[str, Any]]", response.json())
                 return response.text
 
             if response.status_code == self._HTTP_TOO_MANY_REQUESTS:
@@ -299,7 +311,7 @@ class StringDBClient:
 
             try:
                 error_data = response.json()
-            except httpx.JSONDecodeError:
+            except json.JSONDecodeError:
                 error_data = {"message": response.text}
 
             self._raise_client_error(endpoint, response, error_data)
@@ -461,7 +473,7 @@ class StringDBClient:
         Returns:
             List of enriched terms (JSON) or formatted string (TSV/XML/PSI-MI)
         """
-        params = {
+        params: dict[str, Any] = {
             "identifiers": "\r".join(identifiers),
             "caller_identity": self.caller_identity,
         }
@@ -521,6 +533,9 @@ class StringDBClient:
         network_type: str = "functional",
         required_score: int = 400,
         image_format: str = "image",
+        hide_node_labels: bool = False,
+        hide_disconnected_nodes: bool = False,
+        show_query_node_labels: bool = False,
     ) -> bytes:
         """Generate network visualization image.
 
@@ -542,6 +557,9 @@ class StringDBClient:
             "network_flavor": network_flavor,
             "network_type": network_type,
             "required_score": required_score,
+            "hide_node_labels": 1 if hide_node_labels else 0,
+            "hide_disconnected_nodes": 1 if hide_disconnected_nodes else 0,
+            "show_query_node_labels": 1 if show_query_node_labels else 0,
             "caller_identity": self.caller_identity,
         }
 
@@ -558,7 +576,7 @@ class StringDBClient:
         await self._ensure_client()
         assert self._client is not None
 
-        await self._rate_limit()
+        await self.rate_limiter.wait_if_needed()
 
         url_path = f"{image_format}/network"
         url = urljoin(self.base_url.rstrip("/") + "/", url_path)
@@ -611,7 +629,7 @@ class StringDBClient:
         Returns:
             List of homology scores (JSON) or formatted string (TSV/XML/PSI-MI)
         """
-        params = {
+        params: dict[str, Any] = {
             "identifiers": "\r".join(identifiers),
             "caller_identity": self.caller_identity,
         }
@@ -640,7 +658,7 @@ class StringDBClient:
         Returns:
             List of best homology hits (JSON) or formatted string (TSV/XML/PSI-MI)
         """
-        params = {
+        params: dict[str, Any] = {
             "identifiers": "\r".join(identifiers),
             "caller_identity": self.caller_identity,
         }
@@ -690,9 +708,9 @@ class StringDBClient:
 
         result = await self._make_request("ppi_enrichment", params, output_format.value)
         # For JSON format, API returns a list with one dict, we return just the dict
-        if output_format == OutputFormat.JSON:
-            return result[0] if isinstance(result, list) and result else result
-        return result
+        if output_format == OutputFormat.JSON and isinstance(result, list) and result:
+            return result[0]
+        return cast("dict[str, Any] | str", result)
 
     # @alru_cache(maxsize=16, ttl=86400)  # Cache for 24 hours
     async def get_version(
@@ -708,9 +726,9 @@ class StringDBClient:
         """
         result = await self._make_request("version", {}, output_format.value)
         # For JSON format, API returns a list with one dict, we return just the dict
-        if output_format == OutputFormat.JSON:
-            return result[0] if isinstance(result, list) and result else result
-        return result
+        if output_format == OutputFormat.JSON and isinstance(result, list) and result:
+            return result[0]
+        return cast("dict[str, Any] | str", result)
 
     async def get_link(
         self,
@@ -741,23 +759,18 @@ class StringDBClient:
 
         result = await self._make_request("get_link", params, output_format.value)
         # For JSON format, API returns a list with one dict, we return just the dict
-        if output_format == OutputFormat.JSON:
-            return result[0] if isinstance(result, list) and result else result
-        return result
+        if output_format == OutputFormat.JSON and isinstance(result, list) and result:
+            return result[0]
+        return cast("dict[str, Any] | str", result)
 
     def clear_cache(self) -> None:
         """Clear all cached data."""
-        # Clear all alru_cache decorated methods
-        self.get_string_ids.cache_clear()
-        self.get_network_interactions.cache_clear()
-        self.get_interaction_partners.cache_clear()
-        self.get_functional_enrichment.cache_clear()
-        self.get_functional_annotation.cache_clear()
-        self.get_network_image.cache_clear()
-        self.get_homology_scores.cache_clear()
-        self.get_homology_best_hits.cache_clear()
-        self.get_ppi_enrichment.cache_clear()
-        self.get_version.cache_clear()
+        # Caching is opt-in (decorators may be disabled), so only call
+        # cache_clear on methods that actually expose it.
+        for method_name in self._CACHED_METHOD_NAMES:
+            method = getattr(self, method_name)
+            if hasattr(method, "cache_clear"):
+                method.cache_clear()
 
         self.logger.info("Cleared all cached data")
 
@@ -767,21 +780,8 @@ class StringDBClient:
         Returns:
             Dictionary with cache stats for each method
         """
-        methods = [
-            "get_string_ids",
-            "get_network_interactions",
-            "get_interaction_partners",
-            "get_functional_enrichment",
-            "get_functional_annotation",
-            "get_network_image",
-            "get_homology_scores",
-            "get_homology_best_hits",
-            "get_ppi_enrichment",
-            "get_version",
-        ]
-
-        stats = {}
-        for method_name in methods:
+        stats: dict[str, dict[str, Any]] = {}
+        for method_name in self._CACHED_METHOD_NAMES:
             method = getattr(self, method_name)
             if hasattr(method, "cache_info"):
                 info = method.cache_info()
