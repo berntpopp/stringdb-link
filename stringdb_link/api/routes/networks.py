@@ -21,7 +21,7 @@ from stringdb_link.models.responses import (
     LinkInfo,
     NetworkInteractionListResponse,
 )
-from stringdb_link.models.stringdb import OutputFormat
+from stringdb_link.models.stringdb import NetworkType, OutputFormat
 
 from .dependencies import LoggerDep, StringDBServiceDep
 
@@ -71,19 +71,16 @@ async def get_network_interactions(
             add_nodes=request.add_nodes,
         )
 
-        # Call StringDB service
-        interactions = await service.get_network_interactions(request)
+        # Call StringDB service (already returns the wrapped response)
+        response = await service.get_network_interactions(request)
 
         logger.info(
             "Successfully retrieved network interactions",
             input_count=len(request.identifiers),
-            interaction_count=len(interactions),
+            interaction_count=response.total_count,
         )
 
-        return NetworkInteractionListResponse(
-            interactions=interactions,
-            total_count=len(interactions),
-        )
+        return response
 
     except StringDBServiceError as e:
         logger.exception(
@@ -240,8 +237,9 @@ async def get_single_protein_network(
             identifiers=[identifier],
             species=species,
             required_score=required_score,
-            network_type=network_type,
+            network_type=NetworkType(network_type),
             add_nodes=add_nodes,
+            show_query_node_labels=False,
         )
 
         # Use the main endpoint logic
@@ -299,7 +297,7 @@ async def get_single_protein_partners(
             species=species,
             limit=limit,
             required_score=required_score,
-            network_type=network_type,
+            network_type=NetworkType(network_type),
         )
 
         # Use the main endpoint logic
@@ -334,7 +332,7 @@ async def get_network_link(
         OutputFormat.JSON,
         description="Output format for the response",
     ),
-) -> Response:
+) -> LinkInfo | Response:
     """Get shareable link to STRING webpage for the network.
 
     This endpoint generates a shareable URL that leads to the STRING database

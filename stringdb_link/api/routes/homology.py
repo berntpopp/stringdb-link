@@ -13,7 +13,7 @@ from fastapi.responses import PlainTextResponse
 
 from stringdb_link.exceptions import StringDBServiceError, ValidationError
 from stringdb_link.models.requests import HomologyBestRequest, HomologyRequest
-from stringdb_link.models.responses import HomologyScoreListResponse
+from stringdb_link.models.responses import HomologyScore, HomologyScoreListResponse
 from stringdb_link.models.stringdb import OutputFormat
 from stringdb_link.services.stringdb_service import StringDBService
 
@@ -87,11 +87,12 @@ async def get_homology_scores(
             species=request.species,
             output_format=OutputFormat.JSON,
         )
+        records = result if isinstance(result, list) else []
+        scores = [HomologyScore(**record) for record in records]
 
         return HomologyScoreListResponse(
-            data=result,
-            count=len(result),
-            status="success",
+            scores=scores,
+            total_count=len(scores),
         )
 
     except StringDBServiceError as e:
@@ -271,11 +272,12 @@ async def get_homology_best_hits(
             species_b=request.species_b,
             output_format=OutputFormat.JSON,
         )
+        records = result if isinstance(result, list) else []
+        scores = [HomologyScore(**record) for record in records]
 
         return HomologyScoreListResponse(
-            data=result,
-            count=len(result),
-            status="success",
+            scores=scores,
+            total_count=len(scores),
         )
 
     except StringDBServiceError as e:
