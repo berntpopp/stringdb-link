@@ -60,6 +60,13 @@ def test_functional_annotation_splits_comma_separated_strings():
     assert annotation.preferred_names == ["TP53", "MDM2"]
 
 
+def test_enrichment_term_empty_string_coerces_to_empty_list():
+    # An empty inputGenes string should coerce to [] rather than raising.
+    term = EnrichmentTerm(**_enrichment_record("", ""))
+    assert term.input_genes == []
+    assert term.preferred_names == []
+
+
 def test_enrichment_term_rejects_non_string_non_list():
     with pytest.raises(ValidationError):
         EnrichmentTerm(**_enrichment_record(123, ["x"]))
