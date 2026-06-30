@@ -10,6 +10,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from stringdb_link.models.coercions import GeneNameList
+
 
 class BaseResponse(BaseModel):
     """Base response model with common configuration."""
@@ -280,13 +282,13 @@ class EnrichmentTerm(BaseResponse):
         description="NCBI taxonomy identifier",
         json_schema_extra={"example": 9606},
     )
-    input_genes: list[str] = Field(
+    input_genes: GeneNameList = Field(
         ...,
         alias="inputGenes",
         description="Gene names from input with this term",
         json_schema_extra={"example": ["TP53", "MDM2", "ATM"]},
     )
-    preferred_names: list[str] = Field(
+    preferred_names: GeneNameList = Field(
         ...,
         alias="preferredNames",
         description="Preferred protein names",
@@ -345,13 +347,13 @@ class FunctionalAnnotation(BaseResponse):
         description="NCBI taxonomy identifier",
         json_schema_extra={"example": 9606},
     )
-    input_genes: list[str] = Field(
+    input_genes: GeneNameList = Field(
         ...,
         alias="inputGenes",
         description="Gene names from input with this annotation",
         json_schema_extra={"example": ["TP53"]},
     )
-    preferred_names: list[str] = Field(
+    preferred_names: GeneNameList = Field(
         ...,
         alias="preferredNames",
         description="Preferred protein names",

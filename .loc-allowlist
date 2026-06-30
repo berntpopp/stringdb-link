@@ -10,4 +10,4 @@
 stringdb_link/api/client.py:796
 stringdb_link/services/stringdb_service.py:771
 stringdb_link/models/requests.py:682
-stringdb_link/models/responses.py:640
+stringdb_link/models/responses.py:641
