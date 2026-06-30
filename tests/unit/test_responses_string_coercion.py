@@ -55,3 +55,36 @@ def test_functional_annotation_splits_comma_separated_strings():
 def test_enrichment_term_rejects_non_string_non_list():
     with pytest.raises(ValidationError):
         EnrichmentTerm(**_enrichment_record(123, ["x"]))
+
+
+from stringdb_link.models.responses import InteractionPartner, NetworkInteraction
+
+
+def _network_record(score):
+    return {
+        "stringId_A": "9606.ENSP00000269305",
+        "stringId_B": "9606.ENSP00000275493",
+        "preferredName_A": "TP53",
+        "preferredName_B": "EGFR",
+        "ncbiTaxonId": "9606",  # STRING returns this as a string; must coerce
+        "score": score,
+        "nscore": 0.0,
+        "fscore": 0.0,
+        "pscore": 0.0,
+        "ascore": 0.0,
+        "escore": 0.329,
+        "dscore": 0.0,
+        "tscore": 0.919,
+    }
+
+
+def test_network_interaction_accepts_score_above_one():
+    interaction = NetworkInteraction(**_network_record(1.02))
+    assert interaction.score == pytest.approx(1.02)
+    assert interaction.ncbi_taxon_id == 9606
+
+
+def test_interaction_partner_accepts_score_above_one():
+    record = _network_record(1.05)
+    partner = InteractionPartner(**record)
+    assert partner.score == pytest.approx(1.05)
