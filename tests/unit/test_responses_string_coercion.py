@@ -2,10 +2,18 @@
 
 from __future__ import annotations
 
+import inspect
+
 import pytest
 from pydantic import ValidationError
 
-from stringdb_link.models.responses import EnrichmentTerm, FunctionalAnnotation
+from stringdb_link.api.client import StringDBClient
+from stringdb_link.models.responses import (
+    EnrichmentTerm,
+    FunctionalAnnotation,
+    InteractionPartner,
+    NetworkInteraction,
+)
 
 
 def _enrichment_record(input_genes, preferred_names):
@@ -57,9 +65,6 @@ def test_enrichment_term_rejects_non_string_non_list():
         EnrichmentTerm(**_enrichment_record(123, ["x"]))
 
 
-from stringdb_link.models.responses import InteractionPartner, NetworkInteraction
-
-
 def _network_record(score):
     return {
         "stringId_A": "9606.ENSP00000269305",
@@ -88,11 +93,6 @@ def test_interaction_partner_accepts_score_above_one():
     record = _network_record(1.05)
     partner = InteractionPartner(**record)
     assert partner.score == pytest.approx(1.05)
-
-
-import inspect
-
-from stringdb_link.api.client import StringDBClient
 
 
 @pytest.mark.parametrize(
