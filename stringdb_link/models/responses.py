@@ -10,6 +10,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from stringdb_link.models.coercions import GeneNameList
+
 
 class BaseResponse(BaseModel):
     """Base response model with common configuration."""
@@ -103,56 +105,48 @@ class NetworkInteraction(BaseResponse):
     score: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
-        description="Combined confidence score (0.0-1.0)",
+        description="Combined confidence score (STRING-reported, normally 0.0-1.0)",
         json_schema_extra={"example": 0.999},
     )
     nscore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Gene neighborhood score",
         json_schema_extra={"example": 0.0},
     )
     fscore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Gene fusion score",
         json_schema_extra={"example": 0.0},
     )
     pscore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Phylogenetic profile score",
         json_schema_extra={"example": 0.0},
     )
     ascore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Coexpression score",
         json_schema_extra={"example": 0.203},
     )
     escore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Experimental score",
         json_schema_extra={"example": 0.938},
     )
     dscore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Database score",
         json_schema_extra={"example": 0.999},
     )
     tscore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Textmining score",
         json_schema_extra={"example": 0.995},
     )
@@ -194,56 +188,48 @@ class InteractionPartner(BaseResponse):
     score: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
-        description="Combined confidence score (0.0-1.0)",
+        description="Combined confidence score (STRING-reported, normally 0.0-1.0)",
         json_schema_extra={"example": 0.999},
     )
     nscore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Gene neighborhood score",
         json_schema_extra={"example": 0.005},
     )
     fscore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Gene fusion score",
         json_schema_extra={"example": 0.005},
     )
     pscore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Phylogenetic profile score",
         json_schema_extra={"example": 0.005},
     )
     ascore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Coexpression score",
         json_schema_extra={"example": 0.999},
     )
     escore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Experimental score",
         json_schema_extra={"example": 0.999},
     )
     dscore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Database score",
         json_schema_extra={"example": 0.999},
     )
     tscore: float = Field(
         ...,
         ge=0.0,
-        le=1.0,
         description="Textmining score",
         json_schema_extra={"example": 0.999},
     )
@@ -280,13 +266,13 @@ class EnrichmentTerm(BaseResponse):
         description="NCBI taxonomy identifier",
         json_schema_extra={"example": 9606},
     )
-    input_genes: list[str] = Field(
+    input_genes: GeneNameList = Field(
         ...,
         alias="inputGenes",
         description="Gene names from input with this term",
         json_schema_extra={"example": ["TP53", "MDM2", "ATM"]},
     )
-    preferred_names: list[str] = Field(
+    preferred_names: GeneNameList = Field(
         ...,
         alias="preferredNames",
         description="Preferred protein names",
@@ -345,13 +331,13 @@ class FunctionalAnnotation(BaseResponse):
         description="NCBI taxonomy identifier",
         json_schema_extra={"example": 9606},
     )
-    input_genes: list[str] = Field(
+    input_genes: GeneNameList = Field(
         ...,
         alias="inputGenes",
         description="Gene names from input with this annotation",
         json_schema_extra={"example": ["TP53"]},
     )
-    preferred_names: list[str] = Field(
+    preferred_names: GeneNameList = Field(
         ...,
         alias="preferredNames",
         description="Preferred protein names",

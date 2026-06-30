@@ -561,3 +561,59 @@ class TestStringDBServiceEdgeCases:
                 assert result.image.content_type == "image/svg+xml"
             else:
                 assert result.image.content_type == "image/png"
+
+
+class TestUpstreamParseFailures:
+    """Upstream STRING payloads that violate the schema must surface as 502."""
+
+    async def test_network_parse_failure_maps_to_502(self, service, mock_client):
+        # Missing the required preferredName_B -> NetworkInteraction ValidationError.
+        mock_client.get_network_interactions.return_value = [
+            {
+                "stringId_A": "9606.ENSP00000269305",
+                "stringId_B": "9606.ENSP00000344843",
+                "preferredName_A": "TP53",
+                "ncbiTaxonId": 9606,
+                "score": 0.9,
+                "nscore": 0.0,
+                "fscore": 0.0,
+                "pscore": 0.0,
+                "ascore": 0.2,
+                "escore": 0.9,
+                "dscore": 0.9,
+                "tscore": 0.9,
+            }
+        ]
+        request = NetworkRequest(identifiers=["TP53", "EGFR", "CDK2"], species=9606)
+        with pytest.raises(StringDBServiceError) as exc_info:
+            await service.get_network_interactions(request)
+        assert exc_info.value.status_code == 502
+        assert exc_info.value.original_error is not None
+
+    async def test_enrichment_parse_failure_maps_to_502(self, service, mock_client):
+        # p_value out of [0, 1] -> EnrichmentTerm ValidationError.
+        mock_client.get_functional_enrichment.return_value = [
+            {
+                "category": "Process",
+                "term": "GO:0000162",
+                "number_of_genes": 5,
+                "number_of_genes_in_background": 9,
+                "ncbiTaxonId": 511145,
+                "inputGenes": ["trpA"],
+                "preferredNames": ["trpA"],
+                "p_value": 7.5,
+                "fdr": 0.01,
+                "description": "bad p-value",
+            }
+        ]
+        request = EnrichmentRequest(identifiers=["trpA", "trpB"], species=511145)
+        with pytest.raises(StringDBServiceError) as exc_info:
+            await service.get_functional_enrichment(request)
+        assert exc_info.value.status_code == 502
+
+    async def test_non_parse_error_stays_500(self, service, mock_client):
+        mock_client.get_network_interactions.side_effect = RuntimeError("boom")
+        request = NetworkRequest(identifiers=["TP53", "EGFR"], species=9606)
+        with pytest.raises(StringDBServiceError) as exc_info:
+            await service.get_network_interactions(request)
+        assert exc_info.value.status_code == 500
