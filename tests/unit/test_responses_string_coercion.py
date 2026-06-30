@@ -88,3 +88,23 @@ def test_interaction_partner_accepts_score_above_one():
     record = _network_record(1.05)
     partner = InteractionPartner(**record)
     assert partner.score == pytest.approx(1.05)
+
+
+import inspect
+
+from stringdb_link.api.client import StringDBClient
+
+
+@pytest.mark.parametrize(
+    "method_name",
+    [
+        "get_network_interactions",
+        "get_interaction_partners",
+        "get_network_image",
+        "get_ppi_enrichment",
+    ],
+)
+def test_required_score_docstring_uses_0_1000_scale(method_name):
+    doc = inspect.getdoc(getattr(StringDBClient, method_name)) or ""
+    assert "0-1000" in doc, f"{method_name} docstring should state the 0-1000 scale"
+    assert "(0.0-1.0)" not in doc, f"{method_name} docstring still claims 0.0-1.0"
