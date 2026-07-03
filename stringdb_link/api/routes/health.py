@@ -64,7 +64,7 @@ async def health_check(
 async def version_info() -> dict[str, Any]:
     """Get version information."""
     return {
-        "version": "1.0.0",
+        "version": __version__,
         "api_version": "v1",
         "stringdb_api": settings.stringdb_base_url,
     }

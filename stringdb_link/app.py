@@ -28,6 +28,7 @@ from .api.routes import (
 )
 from .config import settings
 from .logging_config import configure_logging, log_server_startup
+from .mcp.error_passthrough import wrap_structured_error_tools
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -51,7 +52,7 @@ def create_app() -> FastAPI:
         description=(
             "High-performance unified API server for STRING protein-protein interaction database"
         ),
-        version="1.0.0",
+        version=__version__,
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
@@ -144,11 +145,17 @@ def create_mcp_app() -> FastMCP:
     # Create FastMCP instance. mask_error_details=True keeps internal exception
     # text out of MCP error responses (Container & Deployment Hardening Standard
     # v1): callers get a generic message, not stack/internal detail.
+    #
+    # mcp_component_fn wraps every generated OpenAPI tool so its output is a
+    # GeneFoundry Response-Envelope Standard v1 flat banner (success) or flat
+    # in-band error frame (failure) — see stringdb_link.mcp.error_passthrough.
+    # This reshapes only the MCP surface; the FastAPI/REST routes are untouched.
     return FastMCP.from_fastapi(
         app=app,
         name=settings.mcp_server_name,
         route_maps=mcp_route_maps,
         mask_error_details=True,
+        mcp_component_fn=wrap_structured_error_tools,
     )
 
 

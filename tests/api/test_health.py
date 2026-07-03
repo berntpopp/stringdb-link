@@ -42,4 +42,4 @@ def test_version_endpoint(test_client: TestClient):
 
     assert "version" in data
     assert "api_version" in data
-    assert data["version"] == "1.0.0"
+    assert data["version"] == __version__

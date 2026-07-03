@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-07-03
+
+### Changed (BREAKING) — GeneFoundry Response-Envelope Standard v1
+
+Adopted the [GeneFoundry Response-Envelope Standard v1](https://github.com/berntpopp/stringdb-link/issues).
+Every MCP tool now returns the fleet-wide flat banner as `structuredContent`;
+the **REST/FastAPI surface is unchanged**. This is a breaking change for MCP
+consumers that parsed the previous bare payloads.
+
+- **Success frame.** Collection tools (`resolve_protein_identifiers`,
+  `search_protein_interactions`, `get_interaction_partners`,
+  `compute_functional_enrichment`, `get_functional_annotations`,
+  `get_protein_homology_scores`, `get_protein_homology_best_hits`) now return
+  `{"success": true, "results": [...], "_meta": {...}}` — the former list key
+  (`mappings`/`interactions`/`partners`/`terms`/`annotations`/`scores`) is
+  promoted to top-level `results`, with `total_count` riding beside it.
+  Single-item tools (`compute_ppi_enrichment`, `get_network_link`,
+  `get_network_image`) nest their payload under `result`.
+- **Error frame.** Route `HTTPException`s are converted at the MCP boundary into
+  a flat, in-band error envelope `{"success": false, "error_code", "message",
+  "retryable", "recovery_action", "_meta": {...}}` (closed error-code enum;
+  status-driven classification — 400→`invalid_input`, 429→`rate_limited`,
+  500→`internal_error`, 502/503/504→`upstream_unavailable`) instead of an opaque
+  `ToolError` text blob. (FastMCP 3.3.1 offers no supported way to set wire-level
+  `isError:true` alongside populated `structuredContent`, so — like the rest of
+  the fleet — the in-band `success` flag is authoritative.)
+- **Per-call disclaimer.** Every response (success *and* error) carries
+  `_meta.unsafe_for_clinical_use: true` plus `tool`/`request_id`/`elapsed_ms`/
+  `source`/`capabilities_version` provenance.
+- **Annotations.** Every tool now declares `READ_ONLY_OPEN_WORLD` MCP
+  annotations (read-only, non-destructive, idempotent, open-world).
+- New `stringdb_link.mcp` package (`envelope.py`, `error_passthrough.py`,
+  `annotations.py`); wired via `FastMCP.from_fastapi(..., mcp_component_fn=...)`.
+
+### Security
+
+- Bumped the transitive `joserfc` pin `1.6.7 → 1.7.2` (CVE-2026-49852 hygiene).
+
 ### Security (Container & Deployment Hardening Standard v1)
 
 - Ported the router/gtex hardening wholesale into the prod and npm Compose
