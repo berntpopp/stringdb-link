@@ -218,23 +218,25 @@ class TestResponseModels:
                 tscore=0,
             )
 
-        # Invalid scores (too high)
-        with pytest.raises(ValidationError):
-            NetworkInteraction(
-                string_id_a="9606.ENSP00000269305",
-                string_id_b="9606.ENSP00000344843",
-                preferred_name_a="TP53",
-                preferred_name_b="MDM2",
-                ncbi_taxon_id=9606,
-                score=1001,  # Invalid
-                nscore=0,
-                fscore=0,
-                pscore=0,
-                ascore=0,
-                escore=0,
-                dscore=0,
-                tscore=0,
-            )
+        # Scores above 1.0 are now valid: STRING combined/sub-scores are
+        # passthrough values and can marginally exceed 1.0 with some API
+        # versions; the le=1.0 upper bound was removed in fix #5.
+        interaction_high = NetworkInteraction(
+            string_id_a="9606.ENSP00000269305",
+            string_id_b="9606.ENSP00000344843",
+            preferred_name_a="TP53",
+            preferred_name_b="MDM2",
+            ncbi_taxon_id=9606,
+            score=1001,
+            nscore=0,
+            fscore=0,
+            pscore=0,
+            ascore=0,
+            escore=0,
+            dscore=0,
+            tscore=0,
+        )
+        assert interaction_high.score == 1001
 
 
 class TestStringDBModels:

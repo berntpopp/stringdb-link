@@ -337,6 +337,7 @@ class StringDBServiceError(StringDBLinkError):
         message: str,
         operation: str | None = None,
         original_error: Exception | None = None,
+        status_code: int | None = None,
     ) -> None:
         """Initialize the service error.
 
@@ -344,6 +345,7 @@ class StringDBServiceError(StringDBLinkError):
             message: Error message
             operation: Service operation that failed
             original_error: Original exception that caused this error
+            status_code: HTTP status code override (defaults to 500)
         """
         details: dict[str, Any] = {}
         if operation:
@@ -352,6 +354,6 @@ class StringDBServiceError(StringDBLinkError):
             details["original_error"] = str(original_error)
             details["error_type"] = type(original_error).__name__
 
-        super().__init__(message, 500, details)
+        super().__init__(message, status_code or 500, details)
         self.operation = operation
         self.original_error = original_error
