@@ -5,7 +5,13 @@ protein-protein interaction database, enabling modern AI applications to query p
 networks, functional enrichment, and interaction data.
 """
 
-__version__ = "2.0.0"
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("stringdb-link")
+except PackageNotFoundError:  # pragma: no cover - source checkout without install
+    __version__ = "0.0.0"
+
 __author__ = "StringDB-Link Development Team"
 __email__ = "dev@stringdb-link.org"
 __license__ = "MIT"
@@ -38,4 +44,5 @@ __all__ = [
     "LICENSE",
     "URL",
     "VERSION",
+    "__version__",
 ]
