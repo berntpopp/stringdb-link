@@ -153,7 +153,7 @@ In your NPM web interface:
 docker-compose logs stringdb-link
 
 # Test health endpoint through NPM
-curl https://stringdb.yourdomain.com/api/health/
+curl https://stringdb.yourdomain.com/api/health
 ```
 
 ### NPM Network Architecture
@@ -193,7 +193,7 @@ Internet → NPM (SSL/443) → Docker Network → StringDB-Link Container (8000)
 
 ## 🔍 Monitoring
 
-- **Health Check**: `curl http://localhost:8000/api/health/`
+- **Health Check**: `curl http://localhost:8000/api/health`
 - **API Documentation**: `http://localhost:8000/docs`
 - **Container Logs**: `docker-compose logs -f stringdb-link`
 
@@ -234,7 +234,7 @@ docker inspect stringdb-link | grep NetworkMode
 docker logs nginx-proxy-manager
 
 # Test internal connectivity
-docker exec stringdb-link curl -f http://localhost:8000/api/health/
+docker exec stringdb-link curl -f http://localhost:8000/api/health
 ```
 
 **NPM proxy configuration:**
@@ -369,10 +369,10 @@ docker-compose logs -f stringdb-link
 
 ```bash
 # Check container health
-docker exec stringdb-link curl -f http://localhost:8000/api/health/
+docker exec stringdb-link curl -f http://localhost:8000/api/health
 
 # Test external access
-curl https://stringdb.yourdomain.com/api/health/
+curl https://stringdb.yourdomain.com/api/health
 
 # Check logs
 docker-compose -f docker-compose.yml -f docker-compose.npm.yml logs stringdb-link
@@ -399,7 +399,7 @@ docker exec stringdb-link ls -la /var/log/
 # Create health check script
 cat > /opt/stringdb-health-check.sh << 'EOF'
 #!/bin/bash
-HEALTH_URL="https://stringdb.yourdomain.com/api/health/"
+HEALTH_URL="https://stringdb.yourdomain.com/api/health"
 if curl -f -s "$HEALTH_URL" > /dev/null; then
     echo "$(date): StringDB-Link is healthy"
 else
@@ -441,7 +441,7 @@ docker-compose -f docker-compose.yml -f docker-compose.npm.yml down
 docker-compose -f docker-compose.yml -f docker-compose.npm.yml up -d --build
 
 # Verify health
-curl https://stringdb.yourdomain.com/api/health/
+curl https://stringdb.yourdomain.com/api/health
 ```
 
 #### Backup Configuration
@@ -479,7 +479,7 @@ docker exec stringdb-link ping npm-container-name
 docker inspect stringdb-link | grep -A 10 Networks
 
 # Test internal health endpoint
-docker exec stringdb-link curl localhost:8000/api/health/
+docker exec stringdb-link curl localhost:8000/api/health
 ```
 
 **SSL certificate issues:**
