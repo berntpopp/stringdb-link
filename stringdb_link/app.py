@@ -150,9 +150,14 @@ def create_mcp_app() -> FastMCP:
     # GeneFoundry Response-Envelope Standard v1 flat banner (success) or flat
     # in-band error frame (failure) — see stringdb_link.mcp.error_passthrough.
     # This reshapes only the MCP surface; the FastAPI/REST routes are untouched.
+    # ``version`` is forwarded via ``from_fastapi(**settings)`` to the underlying
+    # ``FastMCP(version=...)`` so ``initialize`` advertises the package version in
+    # ``serverInfo.version`` (not the FastMCP framework version). Single-sourced
+    # from ``stringdb_link.__version__`` (installed metadata).
     return FastMCP.from_fastapi(
         app=app,
         name=settings.mcp_server_name,
+        version=__version__,
         route_maps=mcp_route_maps,
         mask_error_details=True,
         mcp_component_fn=wrap_structured_error_tools,

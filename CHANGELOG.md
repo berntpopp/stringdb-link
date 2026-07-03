@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-07-03
+
+### Fixed
+
+- **Single-source versioning.** `__version__` now derives from installed package
+  metadata (`importlib.metadata.version("stringdb-link")`) instead of a
+  hardcoded string, so the version lives only in `pyproject.toml`
+  `[project].version`.
+- **MCP `serverInfo.version`.** The FastMCP server (`create_mcp_app`) now
+  advertises the package version via `FastMCP.from_fastapi(..., version=__version__)`,
+  which forwards to the underlying `FastMCP(version=...)`. Previously
+  `initialize` leaked the FastMCP framework version (`3.3.1`) in
+  `serverInfo.version`; `/health` was already correct. Added
+  `tests/unit/test_version_single_source.py` as a regression guard.
+
 ## [2.0.0] - 2026-07-03
 
 ### Changed (BREAKING) — GeneFoundry Response-Envelope Standard v1
