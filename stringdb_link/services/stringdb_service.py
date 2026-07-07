@@ -747,10 +747,10 @@ class StringDBService:
 
             link_info = LinkInfo(url=url)
 
+            # Count/status only — never the raw identifiers or generated URL (PII).
             self.logger.info(
                 "Successfully generated network link",
-                identifiers=request.identifiers,
-                url=url,
+                identifier_count=len(request.identifiers),
             )
 
             return link_info
