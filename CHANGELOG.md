@@ -30,6 +30,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the unauthenticated backend on the public IP; production overlays keep
   `ports: !reset []` (expose-only behind the reverse proxy).
 
+### Fixed
+
+- **Container healthcheck false-red.** The Docker `HEALTHCHECK` curled
+  `http://localhost:8000/api/health/` (trailing slash). The health route is
+  registered as `/api/health` (no slash), and because the app is served as a
+  FastMCP sub-app (`FastMCP.from_fastapi`), Starlette's trailing-slash redirect
+  no longer fires — so `/api/health/` returns 404 (was 307). With `curl -f`
+  (no `-L`) the 404 exited 22 and the container flapped to `unhealthy` despite
+  the app and MCP endpoint serving fine. Point the healthcheck at the canonical
+  `/api/health` across the `Dockerfile`, all three compose files, and the
+  README. Fixes #18.
+
 ## [2.0.1] - 2026-07-03
 
 ### Fixed
