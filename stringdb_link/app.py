@@ -59,10 +59,21 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Add CORS middleware
+    # Add CORS middleware. Credentials default to False (this backend is
+    # unauthenticated — no cookies/sessions to carry), and the method list is
+    # preserved so GET /health and the REST routes stay reachable. Fail closed
+    # on the credentialed-wildcard combination: the CORS spec forbids it and
+    # browsers reject it, so it is only ever a footgun.
+    cors_origins = settings.cors_allow_origins
+    if settings.cors_allow_credentials and "*" in cors_origins:
+        raise ValueError(
+            "Invalid CORS configuration: allow_credentials=True cannot be "
+            "combined with a wildcard ('*') origin. Set CORS__ALLOW_CREDENTIALS "
+            "to false or list explicit origins in CORS__ALLOW_ORIGINS."
+        )
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_allow_origins,
+        allow_origins=cors_origins,
         allow_credentials=settings.cors_allow_credentials,
         allow_methods=settings.cors_allow_methods,
         allow_headers=settings.cors_allow_headers,
