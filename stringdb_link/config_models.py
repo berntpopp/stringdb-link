@@ -137,7 +137,11 @@ class CORSConfigModel(BaseModel):
         description="Allowed CORS origins",
     )
     allow_credentials: bool = Field(
-        default=True,
+        # Off by default: this backend is unauthenticated (holds no cookies or
+        # sessions), so credentialed CORS is meaningless. A credentialed
+        # wildcard origin is also forbidden by the CORS spec / rejected by
+        # browsers; the app factory fails closed on that combination.
+        default=False,
         description="Allow CORS credentials",
     )
     allow_methods: list[str] = Field(

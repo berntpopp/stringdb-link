@@ -6,6 +6,7 @@ formatters and handlers for different environments.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import logging.handlers
 import sys
@@ -21,8 +22,77 @@ from .config import settings
 # HTTP status constants
 HTTP_CLIENT_ERROR = 400
 
+# Event-dict keys whose values can carry caller-supplied protein/gene
+# identifiers, the STRING URLs that embed those identifiers in their query
+# string, or raw exception text interpolated from them. Such values may be
+# patient-derived (GDPR Art. 9), so they are digested rather than logged raw.
+_REDACT_KEYS: frozenset[str] = frozenset(
+    {
+        "identifiers",
+        "identifier",
+        "url",
+        "urls",
+        "query",
+        "q",
+        "error",
+        "error_message",
+        "detail",
+        "exception",
+    },
+)
+
 if TYPE_CHECKING:
-    from structlog.typing import FilteringBoundLogger, Processor
+    from structlog.typing import EventDict, FilteringBoundLogger, Processor, WrappedLogger
+
+
+def _digest(value: object) -> str:
+    """Return a short, non-reversible digest of a sensitive value.
+
+    Keeps log lines correlatable (identical inputs share a digest) without
+    exposing the raw identifier/URL/exception text.
+    """
+    raw = value if isinstance(value, str) else repr(value)
+    return "sha256:" + hashlib.sha256(raw.encode("utf-8", "replace")).hexdigest()[:12]
+
+
+def redact_sensitive_processor(
+    _logger: WrappedLogger,
+    _method_name: str,
+    event_dict: EventDict,
+) -> EventDict:
+    """structlog processor that strips PII carriers before rendering.
+
+    - Drops ``exc_info`` and any rendered ``exception`` frames so raw exception
+      strings/tracebacks (which interpolate identifiers/URLs) are never emitted;
+      ``error_type`` is preserved for triage.
+    - Replaces the value of every denylisted key with a non-reversible digest.
+    """
+    event_dict.pop("exc_info", None)
+    event_dict.pop("exception", None)
+    for key in list(event_dict):
+        if key in _REDACT_KEYS and event_dict[key] is not None:
+            event_dict[key] = _digest(event_dict[key])
+    return event_dict
+
+
+class RedactingFilter(logging.Filter):
+    """Scrub the stdlib traceback channel from every emitted record.
+
+    ``logging.Logger.exception()`` (used pervasively for error handling, and
+    the target of structlog's ``.exception()``) hard-sets ``exc_info=True`` on
+    the record *after* the structlog processor chain runs, so a processor alone
+    cannot remove it. A rendered traceback ends in the exception's ``str`` --
+    which interpolates caller identifiers/URLs (possibly patient-derived, GDPR
+    Art. 9). We drop ``exc_info``/``stack_info`` on all records; the structured
+    ``error_type`` field survives for triage. Trade-off: tracebacks are never
+    written to logs (accepted under the fleet "no PII in logs" contract).
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.exc_info = None
+        record.exc_text = None
+        record.stack_info = None
+        return True
 
 
 def configure_stdlib_logging() -> None:
@@ -56,6 +126,7 @@ def configure_stdlib_logging() -> None:
         handler.setFormatter(formatter)
 
     handler.setLevel(getattr(logging, settings.log_level))
+    handler.addFilter(RedactingFilter())
     root_logger.addHandler(handler)
 
     # Add file handler if enabled
@@ -83,6 +154,7 @@ def add_file_handler(logger: logging.Logger) -> None:
     )
     file_handler.setFormatter(formatter)
     file_handler.setLevel(getattr(logging, settings.log_level))
+    file_handler.addFilter(RedactingFilter())
 
     logger.addHandler(file_handler)
 
@@ -119,6 +191,11 @@ def configure_structlog() -> None:
 
     if settings.debug:
         shared_processors.append(structlog.dev.set_exc_info)
+
+    # Redaction runs last in the shared chain: after set_exc_info (so exc_info
+    # is present to strip) but before any renderer turns exception frames into
+    # text. This closes the PII-in-logs class for every call site at the sink.
+    shared_processors.append(redact_sensitive_processor)
 
     # Configure processors based on format
     processors: list[Processor]

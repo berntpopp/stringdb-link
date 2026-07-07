@@ -362,17 +362,18 @@ async def get_network_link(
         )
 
     except StringDBServiceError as e:
+        # Log the error type only. The raw identifiers and str(e) can embed the
+        # caller-supplied (possibly patient-derived) gene list; the sink-level
+        # redaction processor is the backstop for any field that slips through.
         logger.exception(
             "StringDB service error during link generation",
-            identifiers=request.identifiers,
-            error=str(e),
+            error_type=type(e).__name__,
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:
         logger.exception(
             "Unexpected error during link generation",
-            identifiers=request.identifiers,
-            error=str(e),
+            error_type=type(e).__name__,
         )
         raise HTTPException(
             status_code=500,
