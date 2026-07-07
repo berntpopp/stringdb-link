@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-07-07
+
+### Security
+
+- **No caller identifiers/URLs/tracebacks in logs.** STRING identifiers are
+  caller-supplied gene/protein lists that may be patient-derived (GDPR Art. 9).
+  Several log call sites emitted them raw, along with the generated STRING URL
+  (which embeds them in its query string) and full exception strings/tracebacks
+  that interpolate the same free-text. Added a central `redact_sensitive_processor`
+  (structlog) that digests a denylist of event-dict keys to a non-reversible
+  `sha256:` prefix and drops structlog-rendered exception frames, plus a stdlib
+  `RedactingFilter` that nulls `exc_info`/`stack_info` on every record (because
+  `Logger.exception()` re-attaches the traceback after the processor chain runs).
+  The network-link success log and link-route exception handlers now emit
+  counts/`error_type` only. Regression guard: `tests/unit/test_logging_redaction.py`.
+- **CORS credentials off by default + fail-closed guard.** `allow_credentials`
+  now defaults to `False` (this backend is unauthenticated); the app factory
+  raises at startup if credentials are ever combined with a wildcard origin.
+- **Loopback-bound base compose.** The dev/local `docker-compose.yml` now
+  publishes the host port on `127.0.0.1` so copying it to a server never exposes
+  the unauthenticated backend on the public IP; production overlays keep
+  `ports: !reset []` (expose-only behind the reverse proxy).
+
 ## [2.0.1] - 2026-07-03
 
 ### Fixed
