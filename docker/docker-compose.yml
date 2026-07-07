@@ -30,9 +30,13 @@ services:
       PORT: 8000
       RELOAD: "false"  # Disable reload in container
     
-    # Port mapping
+    # Port mapping — dev/local only, loopback-bound (127.0.0.1) so copying this
+    # file to a server never publishes the unauthenticated backend on the public
+    # IP (Docker would otherwise bind 0.0.0.0 and bypass the host firewall).
+    # Production fronts the container with a reverse proxy via the prod/npm
+    # overlays (ports: !reset []). Backends are unauthenticated by design.
     ports:
-      - "${PORT:-8000}:8000"
+      - "127.0.0.1:${PORT:-8000}:8000"
     
     # Run REST plus hosted MCP through the project CLI.
     command: ["stringdb-link", "server", "--transport", "unified", "--host", "0.0.0.0", "--port", "8000"]
