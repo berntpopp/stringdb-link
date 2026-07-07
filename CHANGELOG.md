@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.3] - 2026-07-07
+
+### Changed
+
+- Release-version disambiguation. `origin/main` independently released a
+  `2.0.2` (healthcheck fix, #19) while this security-remediation release also
+  used `2.0.2`; the two were merged into a single superset commit. This `2.0.3`
+  supersedes both so the tip release version is unambiguous. No functional
+  change beyond the merged `2.0.2` contents (security logging redaction + CORS
+  credentials-off + loopback compose + healthcheck `/api/health`).
+
 ## [2.0.2] - 2026-07-07
 
 ### Security
