@@ -6,9 +6,9 @@ for better organization and maintainability.
 
 from __future__ import annotations
 
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .config_models import (
@@ -42,6 +42,14 @@ class Settings(BaseSettings):
         description="Transport mode: http, stdio, or unified",
     )
     reload: bool = Field(default=False, description="Enable auto-reload in development")
+    allowed_hosts: list[str] = Field(
+        default=["localhost", "127.0.0.1", "::1"],
+        description="Exact Host header values accepted by the request guard",
+    )
+    allowed_origins: list[str] = Field(
+        default=[],
+        description="Browser Origin values accepted by the request guard",
+    )
 
     # Development Configuration
     debug: bool = Field(default=False, description="Enable debug mode")
@@ -80,6 +88,22 @@ class Settings(BaseSettings):
         default_factory=MCPConfigModel,
         description="MCP configuration",
     )
+
+    @field_validator("allowed_hosts", "allowed_origins", mode="before")
+    @classmethod
+    def parse_string_list(cls, value: Any) -> list[str]:
+        """Parse exact allowlists from a comma-separated value or list."""
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return list(value) if value else []
+
+    @field_validator("allowed_hosts")
+    @classmethod
+    def reject_wildcard_host(cls, value: list[str]) -> list[str]:
+        """Require exact hosts; pattern syntax makes the boundary ambiguous."""
+        if any(any(marker in host for marker in "*?[]") for host in value):
+            raise ValueError("wildcard patterns are not allowed in allowed_hosts")
+        return value
 
     @property
     def is_development(self) -> bool:

@@ -8,6 +8,7 @@ services:
       LOGGING__LEVEL: INFO
       LOGGING__FORMAT: json
       RELOAD: "false"
+      ALLOWED_HOSTS: '["localhost","127.0.0.1","::1","stringdb-link.genefoundry.org"]'
     
     # Remove development volume mounts
     volumes: []
@@ -52,7 +53,7 @@ services:
     
     # Enhanced health check for production
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD", "curl", "-f", "-H", "Host: localhost", "http://localhost:8000/api/health"]
       interval: 20s
       timeout: 5s
       retries: 5

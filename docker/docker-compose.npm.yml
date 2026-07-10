@@ -17,6 +17,7 @@ services:
       PUBLIC_DOMAIN: "${PUBLIC_DOMAIN}"
       PUBLIC_URL: "${PUBLIC_URL}"
       CORS__ALLOW_ORIGINS: "${CORS__ALLOW_ORIGINS}"
+      ALLOWED_HOSTS: '["localhost","127.0.0.1","::1","stringdb-link.genefoundry.org"]'
     
     # Remove the base host-port mapping - NPM handles external access. `!reset`
     # is required: a plain `ports: []` MERGES with (does not replace) the base
@@ -57,7 +58,7 @@ services:
     
     # Production health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD", "curl", "-f", "-H", "Host: localhost", "http://localhost:8000/api/health"]
       interval: 20s
       timeout: 5s
       retries: 5
