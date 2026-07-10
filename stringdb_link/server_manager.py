@@ -6,23 +6,21 @@ providing a consistent interface for starting and stopping the server.
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING
+from contextlib import AsyncExitStack, asynccontextmanager
+from typing import TYPE_CHECKING, Any
 
+# FastMCP >=3.4.3 enables a global localhost-only default that rejects the public
+# proxy Host before application allowlists can apply. Disable that implicit guard;
+# create_unified_app installs explicit outer and native guards with the same exact
+# configured lists. The hasattr keeps imports safe on older transitional installs.
+import fastmcp
 import uvicorn
 from fastapi import FastAPI
 
-from .app import app, mcp_app
+from .app import app, create_app, create_mcp_app, mcp_app
 from .config import settings
 from .logging_config import log_server_startup
 
-# fastmcp >=3.4.3 defaults http_host_origin_protection on, which returns 421
-# Misdirected Request for any proxied /mcp request whose Host is not localhost
-# (e.g. traffic from the genefoundry-router). NPM already validates the Host
-# via server_name + TLS SNI, so disable the redundant app-layer guard. This is
-# a no-op on fastmcp <3.4.3 (the setting does not exist yet), so it is safe to
-# land before the version bump that would otherwise break federation.
-import fastmcp
 if hasattr(fastmcp.settings, "http_host_origin_protection"):
     fastmcp.settings.http_host_origin_protection = False
 
@@ -30,6 +28,44 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
     from structlog.typing import FilteringBoundLogger
+
+
+def create_unified_app(
+    fastapi_app: FastAPI | None = None,
+    mcp: Any | None = None,
+) -> FastAPI:
+    """Create the shared FastAPI host with outer and native strict guards."""
+    from fastmcp.server.http import HostOriginGuardMiddleware
+
+    fastapi_app = fastapi_app or create_app()
+    mcp = mcp or create_mcp_app()
+    fastapi_app.add_middleware(
+        HostOriginGuardMiddleware,
+        allowed_hosts=settings.allowed_hosts,
+        allowed_origins=settings.allowed_origins,
+        mode="strict",
+    )
+    mcp_http_app = mcp.http_app(
+        path=settings.mcp_path,
+        stateless_http=True,
+        json_response=True,
+        host_origin_protection=True,
+        allowed_hosts=settings.allowed_hosts,
+        allowed_origins=settings.allowed_origins,
+    )
+
+    original_lifespan = fastapi_app.router.lifespan_context
+
+    @asynccontextmanager
+    async def combined_lifespan(active_app: FastAPI) -> AsyncIterator[None]:
+        async with AsyncExitStack() as stack:
+            await stack.enter_async_context(original_lifespan(active_app))
+            await stack.enter_async_context(mcp_http_app.router.lifespan_context(active_app))
+            yield
+
+    fastapi_app.router.lifespan_context = combined_lifespan
+    fastapi_app.mount("/", mcp_http_app)
+    return fastapi_app
 
 
 class UnifiedServerManager:
@@ -63,28 +99,10 @@ class UnifiedServerManager:
             msg = "MCP app is not available"
             raise RuntimeError(msg)
 
-        # FastMCP 3 stateless transport: bake the mcp_path into the sub-app
-        # and mount the result at "/" so there is no double-prefix that would
-        # produce 307 redirects.  stateless_http=True disables session tracking;
-        # json_response=True ensures Content-Type: application/json (not SSE).
-        mcp_http_app = mcp_app.http_app(
-            path=settings.mcp_path,
-            stateless_http=True,
-            json_response=True,
-        )
-
-        original_lifespan = app.router.lifespan_context
-
-        @asynccontextmanager
-        async def combined_lifespan(fastapi_app: FastAPI) -> AsyncIterator[None]:
-            async with mcp_http_app.lifespan(mcp_http_app), original_lifespan(fastapi_app):
-                yield
-
-        app.router.lifespan_context = combined_lifespan
-        app.mount("/", mcp_http_app)
+        unified_app = create_unified_app(app, mcp_app)
 
         config = uvicorn.Config(
-            app=app,
+            app=unified_app,
             host=host,
             port=port,
             reload=reload,

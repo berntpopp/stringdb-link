@@ -53,7 +53,12 @@ class TestUnifiedServerManager:
 
         # Verify MCP endpoint mounting (stateless transport pattern)
         mock_mcp_app.http_app.assert_called_once_with(
-            path="/mcp", stateless_http=True, json_response=True
+            path="/mcp",
+            stateless_http=True,
+            json_response=True,
+            host_origin_protection=True,
+            allowed_hosts=mock_settings.allowed_hosts,
+            allowed_origins=mock_settings.allowed_origins,
         )
         mock_app.mount.assert_called_once_with("/", mock_mcp_http_app)
 
@@ -92,7 +97,12 @@ class TestUnifiedServerManager:
 
         # Verify MCP endpoint mounting (stateless transport pattern)
         mock_mcp_app.http_app.assert_called_once_with(
-            path="/mcp", stateless_http=True, json_response=True
+            path="/mcp",
+            stateless_http=True,
+            json_response=True,
+            host_origin_protection=True,
+            allowed_hosts=mock_settings.allowed_hosts,
+            allowed_origins=mock_settings.allowed_origins,
         )
         mock_app.mount.assert_called_once_with("/", mock_mcp_http_app)
 
@@ -265,7 +275,12 @@ class TestUnifiedServerManagerIntegration:
 
         # Verify the mount call (stateless transport pattern: path baked, mount at root)
         mock_mcp_app.http_app.assert_called_once_with(
-            path="/custom-mcp", stateless_http=True, json_response=True
+            path="/custom-mcp",
+            stateless_http=True,
+            json_response=True,
+            host_origin_protection=True,
+            allowed_hosts=mock_settings.allowed_hosts,
+            allowed_origins=mock_settings.allowed_origins,
         )
         mock_app.mount.assert_called_once_with("/", mock_mcp_http_app)
 

@@ -72,6 +72,8 @@ Create a `.env` file or set environment variables:
 HOST=127.0.0.1
 PORT=8000
 TRANSPORT=unified
+ALLOWED_HOSTS=["localhost","127.0.0.1","::1"]
+ALLOWED_ORIGINS=[]
 
 # StringDB API Configuration
 STRINGDB_BASE_URL=https://version-12-0.string-db.org/api
@@ -86,6 +88,11 @@ CACHE_NETWORK_TTL=43200     # 12 hours
 LOG_LEVEL=INFO
 LOG_FORMAT=json
 ```
+
+HTTP deployments enforce exact Host and Origin allowlists. Add the public
+reverse-proxy hostname to `ALLOWED_HOSTS`; wildcard host patterns are rejected.
+`ALLOWED_ORIGINS=[]` permits requests without an `Origin` header. These request
+guards are independent of the separate `CORS__ALLOW_ORIGINS` response policy.
 
 ## 📚 API Usage Examples
 

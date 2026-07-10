@@ -13,8 +13,9 @@ from stringdb_link import server_manager
 
 
 def test_mcp_app_is_rooted_stateless_json() -> None:
-    src = inspect.getsource(server_manager)
+    src = inspect.getsource(server_manager.create_unified_app)
     assert 'http_app(path="/")' not in src, "must bake the mcp_path, not path='/'"
     assert "stateless_http=True" in src, "stateless_http=True must be set"
     assert "json_response=True" in src, "json_response=True must be set"
+    assert "host_origin_protection=True" in src, "native strict guard must be enabled"
     assert 'mount("/"' in src, "mount the MCP app at root, not at settings.mcp_path"

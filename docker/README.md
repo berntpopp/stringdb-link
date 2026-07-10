@@ -52,6 +52,8 @@ Key environment variables (edit `.env`):
 STRINGDB_LINK_HOST=127.0.0.1
 STRINGDB_LINK_PORT=8000
 STRINGDB_LINK_LOG_LEVEL=INFO
+ALLOWED_HOSTS=["localhost","127.0.0.1","::1"]
+ALLOWED_ORIGINS=[]
 
 # CORS settings (JSON format required)
 STRINGDB_LINK_CORS_ORIGINS=["http://localhost:3000","http://localhost:8080"]

@@ -29,6 +29,7 @@ services:
       HOST: 0.0.0.0
       PORT: 8000
       RELOAD: "false"  # Disable reload in container
+      ALLOWED_HOSTS: '["localhost","127.0.0.1","::1"]'
     
     # Port mapping — dev/local only, loopback-bound (127.0.0.1) so copying this
     # file to a server never publishes the unauthenticated backend on the public
@@ -43,7 +44,7 @@ services:
     
     # Health check
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      test: ["CMD", "curl", "-f", "-H", "Host: localhost", "http://localhost:8000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
