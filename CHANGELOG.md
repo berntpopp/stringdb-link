@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.2] - 2026-07-11
+
+### Security
+
+- Guard the FastMCP-core not-found reflection surface (Response-Envelope
+  Standard v1.1 §Error-message sanitation fast-follow). FastMCP core echoed the
+  caller's own requested tool name / resource URI / prompt name (and any
+  control/zero-width/bidi/NUL code points) back to the caller and to logs before
+  backend middleware ran. A new `stringdb_link/mcp/notfound_guard.py` closes it
+  with fixed, input-free messages built from constants: a tool-name preflight
+  (unknown tool -> fixed `not_found` envelope, `isError=True`, no `_meta.tool`
+  echo), an `on_read_resource` boundary, a protocol-handler backstop covering the
+  unknown-tool return path and the unknown-prompt caller echo, and a
+  validation-log scrub filter on the FastMCP/MCP-SDK loggers and their
+  non-propagating handlers. Caller self-reflection surface; research use only.
+
 ## [4.0.1] - 2026-07-11
 
 ### Security
