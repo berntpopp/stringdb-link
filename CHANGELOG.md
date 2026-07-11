@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-07-11
+
+### Security
+
+- Adopt Response-Envelope Standard v1.1 untrusted-content fencing. Every
+  externally sourced free-text field emitted by the MCP tool surface now
+  arrives as the typed `untrusted_text` object (`kind`/`text`/`provenance`/
+  `raw_sha256`) instead of a bare string, so hosts and the router treat
+  upstream STRING prose as opaque data rather than instructions
+  (`stringdb_link/mcp/untrusted_content.py`, `stringdb_link/mcp/envelope.py`).
+
+### Changed (BREAKING)
+
+- `resolve_protein_identifiers` (`/mappings/*/annotation`),
+  `compute_functional_enrichment` (`/terms/*/description`), and
+  `get_functional_annotations` (`/annotations/*/description`) now return the
+  typed `untrusted_text` object for those fields instead of a plain string, at
+  the MCP `structuredContent` boundary. Interaction and homology scores are
+  unaffected (still numeric). The REST/OpenAPI surface
+  (`stringdb_link/models/responses.py`) is unchanged — this reshape applies
+  only to the MCP tool output, matching this repo's existing MCP-only
+  envelope architecture.
+
 ## [3.0.0] - 2026-07-10
 
 ### Security
