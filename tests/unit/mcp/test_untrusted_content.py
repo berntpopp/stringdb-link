@@ -14,7 +14,7 @@ from stringdb_link.mcp.untrusted_content import (
 
 
 def test_fence_normalizes_and_removes_forbidden_controls() -> None:
-    raw = "Café\x00‍‮\nBRCA1"
+    raw = "Café\x00\u200d\u202e\nBRCA1"
     fenced = fence_untrusted_text(raw, source="stringdb", record_id="9606.ENSP00000269305")
     assert fenced.kind == "untrusted_text"
     assert fenced.text == "Café\nBRCA1"
@@ -24,10 +24,8 @@ def test_fence_normalizes_and_removes_forbidden_controls() -> None:
 
 
 def test_fence_preserves_tabs_newlines_and_scientific_symbols() -> None:
-    raw = "p.Gly12Asp\tΔG = −1.2 kcal/mol\r\n"
-    assert (
-        fence_untrusted_text(raw, source="stringdb", record_id="GO:0006915").text == raw
-    )
+    raw = "p.Gly12Asp\t\u0394G = \u22121.2 kcal/mol\r\n"
+    assert fence_untrusted_text(raw, source="stringdb", record_id="GO:0006915").text == raw
 
 
 def test_limits_reject_oversized_object() -> None:

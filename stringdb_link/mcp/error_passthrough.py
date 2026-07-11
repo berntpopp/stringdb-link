@@ -115,9 +115,12 @@ def wrap_structured_error_tools(route: Any, component: Any) -> None:
 
     # Declare an envelope-shaped outputSchema so the low-level MCP SDK's
     # per-call structuredContent validation accepts both the success and error
-    # frames (see envelope.reshape_output_schema).
+    # frames (see envelope.reshape_output_schema). Passing the tool name lets
+    # it embed the UntrustedText schema for tools that fence a prose field.
     object.__setattr__(
-        component, "output_schema", envelope.reshape_output_schema(component.output_schema)
+        component,
+        "output_schema",
+        envelope.reshape_output_schema(component.output_schema, component.name),
     )
 
     original_run = component.run

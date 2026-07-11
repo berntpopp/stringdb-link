@@ -29,12 +29,54 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from stringdb_link.mcp.untrusted_content import (
+    UntrustedText,
+    enforce_untrusted_text_limits,
+    fence_untrusted_text,
+)
+
 # Static provenance stamp bumped when the tool surface / envelope shape changes
 # in a way a warm client should re-fetch metadata for. No capabilities tool
 # exists yet on this server, so this is provenance, not a live value.
 CAPABILITIES_VERSION = "1"
 
 SOURCE = "stringdb"
+
+# GeneFoundry Response-Envelope Standard v1.1 — untrusted-content fencing.
+#
+# One entry per MCP tool that carries an externally sourced free-text field
+# (see genefoundry-router/docs/conformance/untrusted-text-inventory.yml,
+# backend: stringdb): ``(json key holding the raw prose, json key holding the
+# record's stable STRING/GO/KEGG id)``. Interaction/homology scores are
+# numeric and never appear here.
+UNTRUSTED_TEXT_FIELDS: dict[str, tuple[str, str]] = {
+    "resolve_protein_identifiers": ("annotation", "stringId"),
+    "compute_functional_enrichment": ("description", "term"),
+    "get_functional_annotations": ("description", "term"),
+}
+
+# STRING enrichment/annotation result lists are the tool's real result cap, not
+# the bare v1.1 default of 128: a large input gene set can legitimately surface
+# many GO/KEGG terms in one call. The 2 MiB/object and 8 MiB/total byte limits
+# stay at their v1.1 defaults — they are the real DoS backstop.
+_UNTRUSTED_TEXT_MAX_OBJECTS = 10_000
+
+
+def _untrusted_text_object_defs() -> dict[str, Any]:
+    """Return the ``$defs`` graph for the ``UntrustedText`` object.
+
+    Hoists ``UntrustedText``'s own nested ``$defs`` (``UntrustedTextProvenance``)
+    to the top level so its ``#/$defs/UntrustedTextProvenance`` ``$ref`` still
+    resolves once embedded in a tool's ``outputSchema``. A fresh dict is built
+    per call so FastMCP's downstream ``prune_defs`` pass cannot mutate a shared
+    object across the fenced tools.
+    """
+    schema = UntrustedText.model_json_schema()
+    nested = schema.pop("$defs", {})
+    defs: dict[str, Any] = {"UntrustedText": schema}
+    defs.update(nested)
+    return defs
+
 
 # Closed error-code enum (Response-Envelope Standard v1 §2), harmonized with the
 # codes used fleet-wide (e.g. clingen-link's ``internal_error``).
@@ -111,6 +153,34 @@ def new_request_id() -> str:
     return uuid.uuid4().hex
 
 
+def _fence_collection_field(
+    items: list[Any],
+    *,
+    text_field: str,
+    record_id_field: str,
+) -> None:
+    """Reshape one bare-string prose field into a v1.1 ``untrusted_text`` object.
+
+    Mutates ``items`` in place: STRING protein annotations and GO/KEGG
+    enrichment/annotation term descriptions are externally sourced free text
+    and must never reach an MCP caller as a bare string. The raw string is
+    replaced by the typed object at the same key — no sibling field carries a
+    duplicate copy of the raw or sanitized prose.
+    """
+    fenced: list[UntrustedText] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        raw = item.get(text_field)
+        if not isinstance(raw, str):
+            continue
+        record_id = str(item.get(record_id_field, ""))
+        obj = fence_untrusted_text(raw, source=SOURCE, record_id=record_id)
+        fenced.append(obj)
+        item[text_field] = obj.model_dump(mode="json")
+    enforce_untrusted_text_limits(fenced, max_objects=_UNTRUSTED_TEXT_MAX_OBJECTS)
+
+
 def _augment_meta(
     meta: dict[str, Any],
     *,
@@ -153,6 +223,11 @@ def build_success_envelope(
     if spec.kind == "collection":
         source_key = spec.source_key or "results"
         items = working.pop(source_key, [])
+        fence_fields = UNTRUSTED_TEXT_FIELDS.get(tool_name)
+        if fence_fields is not None and isinstance(items, list):
+            _fence_collection_field(
+                items, text_field=fence_fields[0], record_id_field=fence_fields[1]
+            )
         envelope["results"] = items
         # Remaining domain keys (e.g. total_count) ride beside `results`.
         envelope.update(working)
@@ -202,7 +277,9 @@ def classify_status(status_code: int) -> tuple[ErrorCode, bool]:
     return "internal_error", False
 
 
-def reshape_output_schema(schema: dict[str, Any] | None) -> dict[str, Any]:
+def reshape_output_schema(
+    schema: dict[str, Any] | None, tool_name: str | None = None
+) -> dict[str, Any]:
     """Return a permissive envelope-shaped ``outputSchema`` for one tool.
 
     The low-level MCP SDK validates ``structuredContent`` against the tool's
@@ -215,14 +292,16 @@ def reshape_output_schema(schema: dict[str, Any] | None) -> dict[str, Any]:
     downstream ``prune_defs`` pass drops unreferenced defs, which is fine — deep
     per-record shape is exercised behaviorally, not via declared-schema
     introspection).
-    """
-    preserved_defs: dict[str, Any] = {}
-    if schema:
-        for key in ("$defs", "definitions"):
-            value = schema.get(key)
-            if isinstance(value, dict):
-                preserved_defs[key] = value
 
+    When ``tool_name`` fences an untrusted-text field (``UNTRUSTED_TEXT_FIELDS``),
+    the ``results`` array is declared with a list-item schema whose fenced
+    pointer ``$ref``s the ``UntrustedText`` object, so the LIVE tool schema
+    (``list_tools``) advertises ``kind: const "untrusted_text"`` at the fenced
+    field — not the bare ``string`` the original OpenAPI ``$defs`` typed it as.
+    The original per-record ``$defs`` are intentionally dropped for fenced tools:
+    they still type the fenced field as a string and would misrepresent the
+    reshaped MCP output (Response-Envelope Standard v1.1).
+    """
     envelope_schema: dict[str, Any] = {
         "type": "object",
         "properties": {
@@ -232,5 +311,28 @@ def reshape_output_schema(schema: dict[str, Any] | None) -> dict[str, Any]:
         "required": ["success", "_meta"],
         "additionalProperties": True,
     }
+
+    if tool_name in UNTRUSTED_TEXT_FIELDS:
+        text_field = UNTRUSTED_TEXT_FIELDS[tool_name][0]
+        # `results` is optional so the shared outputSchema slot still accepts the
+        # error frame (which has no `results`); its item shape pins the fenced
+        # pointer to the typed object while staying permissive on sibling fields.
+        envelope_schema["properties"]["results"] = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {text_field: {"$ref": "#/$defs/UntrustedText"}},
+                "additionalProperties": True,
+            },
+        }
+        envelope_schema["$defs"] = _untrusted_text_object_defs()
+        return envelope_schema
+
+    preserved_defs: dict[str, Any] = {}
+    if schema:
+        for key in ("$defs", "definitions"):
+            value = schema.get(key)
+            if isinstance(value, dict):
+                preserved_defs[key] = value
     envelope_schema.update(preserved_defs)
     return envelope_schema
