@@ -33,6 +33,7 @@ from stringdb_link.mcp.untrusted_content import (
     UntrustedText,
     enforce_untrusted_text_limits,
     fence_untrusted_text,
+    sanitize_message,
 )
 
 # Static provenance stamp bumped when the tool surface / envelope shape changes
@@ -147,6 +148,32 @@ _GENERIC_RECOVERY_ACTION: dict[ErrorCode, str] = {
     "internal_error": "Retry once; if the error persists the request could not be completed.",
 }
 
+# Fixed, server-authored, body-free error messages keyed by the classified code.
+# The caller-visible ``message`` is derived ONLY from the HTTP status/classification
+# -- NEVER from a response body. An upstream (or FastAPI/ASGI) error body is
+# caller-influenceable: it can carry injection PROSE that survives code-point
+# sanitization, so it is severed here at the boundary rather than echoed. The HTTP
+# status is the one safe, non-attacker-controlled scalar we derive the message from.
+_SAFE_ERROR_MESSAGE: dict[ErrorCode, str] = {
+    "invalid_input": "The request was rejected as invalid.",
+    "not_found": "The requested record was not found.",
+    "ambiguous_query": "The query was ambiguous; narrow it to a single result.",
+    "upstream_unavailable": "The upstream STRING API is unavailable.",
+    "rate_limited": "The STRING API request rate was exceeded.",
+    "internal_error": "An internal error occurred while processing the request.",
+}
+
+
+def safe_error_message(status_code: int) -> str:
+    """Return a fixed, server-authored message for an HTTP status.
+
+    Never derived from a response body: only the status is classified. This is the
+    boundary guarantee that no attacker-influenceable upstream/error-body prose can
+    reach an MCP caller through the error ``message``.
+    """
+    error_code, _ = classify_status(status_code)
+    return _SAFE_ERROR_MESSAGE[error_code]
+
 
 def new_request_id() -> str:
     """Return a fresh opaque request id for one MCP tool invocation."""
@@ -252,13 +279,16 @@ def build_error_envelope(
 
     stringdb-link routes raise ``HTTPException`` with a plain-string ``detail``
     (no structured ``code`` body), so classification is purely status-driven and
-    ``message`` is the sanitized route detail.
+    ``message`` is the sanitized route detail. The message is run through
+    :func:`sanitize_message` here as a belt-and-suspenders backstop so no forbidden
+    control/zero-width/bidi/NUL code point reaches the caller by any error path,
+    even if a caller passes an unsanitized string.
     """
     error_code, retryable = classify_status(status_code)
     envelope: dict[str, Any] = {
         "success": False,
         "error_code": error_code,
-        "message": message,
+        "message": sanitize_message(message),
         "retryable": retryable,
         "recovery_action": _GENERIC_RECOVERY_ACTION[error_code],
     }

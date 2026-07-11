@@ -41,35 +41,19 @@ def _find_http_status_response(exc: BaseException) -> httpx.Response | None:
 
 
 def _fallback_message(response: httpx.Response) -> str:
-    """Best-effort human-readable message from a FastAPI error response body.
+    """Return a fixed, classification-keyed message. NEVER reads the response body.
 
-    stringdb-link routes raise ``HTTPException(status_code, detail="...")`` which
-    FastAPI renders as ``{"detail": "<string>"}`` (or ``{"detail": [ ... ]}`` for
-    422 validation). The detail text is route-controlled and already sanitized.
+    The response body -- whether the local FastAPI/ASGI error body or any
+    ``httpx.Response`` surfaced from the exception's cause/context chain by
+    ``_find_http_status_response`` -- is caller-influenceable: a route may
+    interpolate an upstream/exception string into its ``{"detail": ...}`` and an
+    upstream body can carry injection PROSE that survives code-point sanitization.
+    So the body is never parsed or echoed here; the caller-visible message is
+    derived ONLY from the HTTP status (see ``envelope.safe_error_message``), the
+    one safe, non-attacker-controlled scalar. ``build_error_envelope`` additionally
+    strips forbidden code points as a defensive backstop.
     """
-    try:
-        body = response.json()
-    except ValueError:
-        text = response.text.strip()
-        return text[:300] if text else f"HTTP {response.status_code}"
-
-    if isinstance(body, dict):
-        detail = body.get("detail")
-        if isinstance(detail, str) and detail:
-            return detail[:300]
-        if isinstance(detail, list) and detail:
-            parts: list[str] = []
-            for item in detail:
-                if isinstance(item, dict) and item.get("msg"):
-                    loc = ".".join(str(p) for p in item.get("loc", []))
-                    parts.append(f"{loc}: {item['msg']}" if loc else str(item["msg"]))
-            if parts:
-                return "; ".join(parts)[:300]
-        for key in ("message", "error"):
-            value = body.get(key)
-            if isinstance(value, str) and value:
-                return value[:300]
-    return f"HTTP {response.status_code}"
+    return envelope.safe_error_message(response.status_code)
 
 
 def _build_error_envelope_from_exception(

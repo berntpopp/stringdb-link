@@ -8,7 +8,6 @@ and comprehensive error handling.
 from __future__ import annotations
 
 import asyncio
-import json
 import time
 from typing import TYPE_CHECKING, Any, NoReturn, Self, cast
 from urllib.parse import urljoin
@@ -78,15 +77,18 @@ class StringDBClient:
             endpoint=endpoint,
         )
 
-    def _raise_client_error(
-        self, endpoint: str, response: httpx.Response, error_data: dict[str, Any]
-    ) -> NoReturn:
-        """Raise client error with proper details."""
+    def _raise_client_error(self, endpoint: str, response: httpx.Response) -> NoReturn:
+        """Raise a client (4xx) error keyed only by status.
+
+        The upstream response BODY is deliberately not read or retained: it is
+        caller-influenceable and must never enter the exception cause graph, a log,
+        or (via the MCP boundary) a caller-visible message. Only the HTTP status --
+        a safe, non-attacker-controlled scalar -- is kept.
+        """
         msg = f"StringDB API error: {response.status_code}"
         raise StringDBAPIError(
             msg,
             status_code=response.status_code,
-            response_data=error_data,
             endpoint=endpoint,
         )
 
@@ -306,15 +308,11 @@ class StringDBClient:
 
                 self._raise_server_error(endpoint, response)
 
-            # Client error (4xx)
+            # Client error (4xx). The upstream response body is deliberately NOT
+            # read or retained (see _raise_client_error): it is caller-influenceable
+            # and must never enter the exception cause graph, a log, or a message.
             self.failed_requests += 1
-
-            try:
-                error_data = response.json()
-            except json.JSONDecodeError:
-                error_data = {"message": response.text}
-
-            self._raise_client_error(endpoint, response, error_data)
+            self._raise_client_error(endpoint, response)
 
         except httpx.TimeoutException as e:
             self.failed_requests += 1

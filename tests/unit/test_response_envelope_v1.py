@@ -24,7 +24,7 @@ import pytest
 from fastmcp import Client
 
 from stringdb_link.exceptions import StringDBServiceError
-from stringdb_link.mcp.envelope import build_error_envelope
+from stringdb_link.mcp.envelope import build_error_envelope, safe_error_message
 from stringdb_link.models.responses import (
     InteractionPartner,
     InteractionPartnerListResponse,
@@ -137,7 +137,11 @@ async def test_upstream_failure_is_flat_retryable_error_envelope(facade: Any) ->
     assert body["error_code"] == "upstream_unavailable"
     assert body["retryable"] is True
     assert body["recovery_action"]
-    assert "STRING API unreachable" in body["message"]
+    # The message is a fixed, server-authored, status-keyed string — the upstream
+    # error string is SEVERED, never echoed (a caller-influenced body could carry
+    # injection prose that code-point sanitization alone would not remove).
+    assert body["message"] == safe_error_message(502)
+    assert "STRING API unreachable" not in body["message"]
     assert body["_meta"]["tool"] == "get_interaction_partners"
     assert body["_meta"]["unsafe_for_clinical_use"] is True
 
