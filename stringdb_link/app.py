@@ -165,7 +165,7 @@ def create_mcp_app() -> FastMCP:
     # ``FastMCP(version=...)`` so ``initialize`` advertises the package version in
     # ``serverInfo.version`` (not the FastMCP framework version). Single-sourced
     # from ``stringdb_link.__version__`` (installed metadata).
-    return FastMCP.from_fastapi(
+    mcp = FastMCP.from_fastapi(
         app=app,
         name=settings.mcp_server_name,
         version=__version__,
@@ -173,6 +173,27 @@ def create_mcp_app() -> FastMCP:
         mask_error_details=True,
         mcp_component_fn=wrap_structured_error_tools,
     )
+
+    # FastMCP-core not-found reflection guard (Response-Envelope v1.1 fast-follow):
+    # core echoes the caller's OWN requested tool name / resource URI / prompt name
+    # (with any control/zero-width/bidi/NUL code points) to the caller and to logs
+    # BEFORE backend middleware runs. NotFoundGuard preflights the tool NAME
+    # (unknown -> fixed name-free envelope) and fixes the on_read_resource boundary;
+    # added FIRST so it is the OUTERMOST middleware. install_validation_log_filter
+    # scrubs FastMCP-core / MCP-SDK validation logs; install_protocol_error_handler
+    # is the outermost backstop on the raw CallTool/ReadResource/GetPrompt handlers
+    # (the only layer covering the unknown-prompt caller echo). See notfound_guard.py.
+    from .mcp.notfound_guard import (
+        NotFoundGuard,
+        install_protocol_error_handler,
+        install_validation_log_filter,
+    )
+
+    mcp.add_middleware(NotFoundGuard())
+    install_validation_log_filter()
+    # Installed AFTER from_fastapi has registered every tool/resource/prompt handler.
+    install_protocol_error_handler(mcp)
+    return mcp
 
 
 # Create application instances
