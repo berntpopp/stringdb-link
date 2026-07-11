@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-07-11
+
+### Security
+
+- Defense in depth: the MCP error-passthrough no longer echoes upstream/response
+  error-body text (fixed status-keyed messages), caller-visible messages are
+  sanitized of control/zero-width/bidi/NUL code points, and the client no longer
+  reads/retains non-success response bodies. Research use only.
+
 ## [4.0.0] - 2026-07-11
 
 ### Security
