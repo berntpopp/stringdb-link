@@ -8,17 +8,27 @@ and comprehensive error handling.
 from __future__ import annotations
 
 import asyncio
+import json
 import time
-from typing import TYPE_CHECKING, Any, NoReturn, Self, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 from urllib.parse import urljoin
 
 import httpx
 
+from stringdb_link.api import http_errors
+from stringdb_link.api.url_guard import (
+    MAX_REDIRECTS,
+    MAX_RESPONSE_BYTES,
+    DisallowedURLError,
+    ResponseTooLargeError,
+    make_url_guard,
+    stream_capped,
+    stringdb_allowed_hosts,
+)
 from stringdb_link.config import settings
 from stringdb_link.exceptions import (
     NetworkError,
     StringDBAPIError,
-    StringDBRateLimitError,
     StringDBTimeoutError,
 )
 from stringdb_link.logging_config import get_logger, log_stringdb_request
@@ -58,40 +68,6 @@ class StringDBClient:
         "get_version",
     )
 
-    def _raise_rate_limit_error(self, endpoint: str, response: httpx.Response) -> NoReturn:
-        """Raise rate limit error with proper details."""
-        retry_after = int(response.headers.get("Retry-After", 60))
-        msg = f"Rate limit exceeded for endpoint {endpoint}"
-        raise StringDBRateLimitError(
-            msg,
-            retry_after=retry_after,
-            endpoint=endpoint,
-        )
-
-    def _raise_server_error(self, endpoint: str, response: httpx.Response) -> NoReturn:
-        """Raise server error with proper details."""
-        msg = f"StringDB server error: {response.status_code}"
-        raise StringDBAPIError(
-            msg,
-            status_code=response.status_code,
-            endpoint=endpoint,
-        )
-
-    def _raise_client_error(self, endpoint: str, response: httpx.Response) -> NoReturn:
-        """Raise a client (4xx) error keyed only by status.
-
-        The upstream response BODY is deliberately not read or retained: it is
-        caller-influenceable and must never enter the exception cause graph, a log,
-        or (via the MCP boundary) a caller-visible message. Only the HTTP status --
-        a safe, non-attacker-controlled scalar -- is kept.
-        """
-        msg = f"StringDB API error: {response.status_code}"
-        raise StringDBAPIError(
-            msg,
-            status_code=response.status_code,
-            endpoint=endpoint,
-        )
-
     def __init__(
         self,
         base_url: str | None = None,
@@ -116,6 +92,9 @@ class StringDBClient:
         self.max_retries = max_retries or settings.stringdb_max_retries
         self.caller_identity = caller_identity or "StringDB-Link/0.1.0"
         self.logger = logger or get_logger("stringdb_client")
+
+        # Exact-host allowlist for every outbound hop (F-17), derived from config.
+        self._allowed_hosts = stringdb_allowed_hosts(self.base_url)
 
         # Initialize statistics tracking
         self.total_requests = 0
@@ -165,7 +144,12 @@ class StringDBClient:
                     "Accept": "application/json",
                     "Content-Type": "application/x-www-form-urlencoded",
                 },
+                # Keep httpx's redirect machinery (correct POST method/body
+                # handling across STRING's stable-address redirect) but validate
+                # every hop (F-17) and bound the chain length.
                 follow_redirects=True,
+                max_redirects=MAX_REDIRECTS,
+                event_hooks={"request": [make_url_guard(self._allowed_hosts)]},
             )
 
     async def close(self) -> None:
@@ -242,49 +226,51 @@ class StringDBClient:
         self.total_requests += 1
 
         try:
-            # Make the HTTP request
-            if method == "POST":
-                response = await self._client.post(url, data=params)
-            else:
-                response = await self._client.get(url, params=params)
+            # Stream + byte-cap (fail closed) the success body before it is
+            # buffered/parsed. The POST form body is kept intact; httpx follows
+            # STRING's stable-address redirect and the request event-hook
+            # validates every hop (F-17).
+            stream_kwargs: dict[str, Any] = (
+                {"data": params} if method == "POST" else {"params": params}
+            )
+            response, body = await stream_capped(
+                self._client, method, url, max_bytes=MAX_RESPONSE_BYTES, **stream_kwargs
+            )
+            status_code = response.status_code
 
             duration = time.time() - start_time
             self.response_times.append(duration)
-
-            # Keep only recent response times for statistics
             if len(self.response_times) > self._MAX_RESPONSE_TIMES:
                 self.response_times = self.response_times[-self._RESPONSE_TIMES_KEEP :]
-
-            # Log the request
             log_stringdb_request(
                 self.logger,
                 endpoint=endpoint,
                 method=method,
-                status_code=response.status_code,
+                status_code=status_code,
                 duration=duration,
             )
 
-            # Handle response based on status code
-            if response.status_code == self._HTTP_OK:
+            if status_code == self._HTTP_OK:
                 # Success
                 self.successful_requests += 1
                 await self.rate_limiter.on_success()
+                assert body is not None
 
                 # JSON responses decode to a list of records; every other
                 # format (tsv/xml/psi-mi/...) is returned as text. Binary image
                 # formats are served by get_network_image, not this path.
                 if output_format == "json":
-                    return cast("list[dict[str, Any]]", response.json())
-                return response.text
+                    return cast("list[dict[str, Any]]", json.loads(body))
+                return body.decode(response.charset_encoding or "utf-8")
 
-            if response.status_code == self._HTTP_TOO_MANY_REQUESTS:
+            if status_code == self._HTTP_TOO_MANY_REQUESTS:
                 # Rate limit exceeded
                 self.failed_requests += 1
                 await self.rate_limiter.on_rate_limited()
 
-                self._raise_rate_limit_error(endpoint, response)
+                http_errors.raise_rate_limit_error(endpoint, response)
 
-            if response.status_code >= self._HTTP_SERVER_ERROR:
+            if status_code >= self._HTTP_SERVER_ERROR:
                 # Server error - retry if we have retries left
                 self.failed_requests += 1
 
@@ -293,7 +279,7 @@ class StringDBClient:
                     self.logger.warning(
                         "StringDB server error, retrying",
                         endpoint=endpoint,
-                        status_code=response.status_code,
+                        status_code=status_code,
                         retry=retries + 1,
                         delay=delay,
                     )
@@ -306,13 +292,20 @@ class StringDBClient:
                         retries + 1,
                     )
 
-                self._raise_server_error(endpoint, response)
+                http_errors.raise_server_error(endpoint, response)
 
-            # Client error (4xx). The upstream response body is deliberately NOT
-            # read or retained (see _raise_client_error): it is caller-influenceable
-            # and must never enter the exception cause graph, a log, or a message.
+            # Client error (4xx). The upstream body is deliberately NOT read or
+            # retained (see http_errors.raise_client_error): it is
+            # caller-influenceable and must never enter the exception/log/message.
             self.failed_requests += 1
-            self._raise_client_error(endpoint, response)
+            http_errors.raise_client_error(endpoint, response)
+
+        except (DisallowedURLError, ResponseTooLargeError):
+            # A blocked outbound hop or an over-cap body is NON-RETRYABLE: re-raise
+            # as-is so the retry loop never re-issues it and the broad handler below
+            # does not mask it as a generic StringDBAPIError.
+            self.failed_requests += 1
+            raise
 
         except httpx.TimeoutException as e:
             self.failed_requests += 1
@@ -582,23 +575,28 @@ class StringDBClient:
         start_time = asyncio.get_event_loop().time()
 
         try:
-            response = await self._client.post(url, data=params)
+            # Stream + byte-cap the (binary) image before buffering (F-17); the
+            # request event-hook validates every hop.
+            response, content = await stream_capped(
+                self._client, "POST", url, max_bytes=MAX_RESPONSE_BYTES, data=params
+            )
+            status_code = response.status_code
             duration = asyncio.get_event_loop().time() - start_time
-
             log_stringdb_request(
                 self.logger,
                 endpoint="network_image",
                 method="POST",
-                status_code=response.status_code,
+                status_code=status_code,
                 duration=duration,
             )
 
-            if response.status_code == self._HTTP_OK:
-                return response.content
-            msg = f"Failed to generate network image: {response.status_code}"
+            if status_code == self._HTTP_OK:
+                assert content is not None
+                return content
+            msg = f"Failed to generate network image: {status_code}"
             raise StringDBAPIError(
                 msg,
-                status_code=response.status_code,
+                status_code=status_code,
                 endpoint="network_image",
             )
 
