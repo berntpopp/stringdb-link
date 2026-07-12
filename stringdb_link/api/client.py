@@ -20,6 +20,7 @@ from stringdb_link.api.url_guard import (
     MAX_REDIRECTS,
     MAX_RESPONSE_BYTES,
     DisallowedURLError,
+    RedirectBodyLossError,
     ResponseTooLargeError,
     make_url_guard,
     stream_capped,
@@ -300,10 +301,11 @@ class StringDBClient:
             self.failed_requests += 1
             http_errors.raise_client_error(endpoint, response)
 
-        except (DisallowedURLError, ResponseTooLargeError):
-            # A blocked outbound hop or an over-cap body is NON-RETRYABLE: re-raise
-            # as-is so the retry loop never re-issues it and the broad handler below
-            # does not mask it as a generic StringDBAPIError.
+        except (DisallowedURLError, ResponseTooLargeError, RedirectBodyLossError):
+            # A blocked outbound hop, an over-cap body, or a method-changing
+            # (POST->GET body-loss) redirect is NON-RETRYABLE: re-raise as-is so the
+            # retry loop never re-issues it and the broad handler below does not mask
+            # it as a generic StringDBAPIError. All three messages are host-free.
             self.failed_requests += 1
             raise
 

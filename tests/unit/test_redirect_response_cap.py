@@ -14,6 +14,8 @@ generic->versioned redirect; these tests pin the event-hook behaviour instead.
 
 from __future__ import annotations
 
+import logging
+
 import httpx
 import pytest
 
@@ -21,8 +23,10 @@ from stringdb_link.api.client import StringDBClient
 from stringdb_link.api.url_guard import (
     GENERIC_STRING_HOST,
     DisallowedURLError,
+    RedirectBodyLossError,
     ResponseTooLargeError,
     build_host_allowlist,
+    check_no_redirect_method_change,
     make_url_guard,
 )
 
@@ -259,3 +263,162 @@ async def test_network_image_happy_path_returns_bytes() -> None:
         await client.close()
 
     assert result == payload
+
+
+# --------------------------------------------------------------------------- #
+# F-17 gate fix 1: full-origin (port) validation, not host-only                #
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.asyncio
+async def test_guard_rejects_alternate_port() -> None:
+    """An allowlisted host on a NON-default port is a distinct origin: rejected.
+
+    A host-only check would let ``version-12-0.string-db.org:8080`` through; the
+    guard must validate the full origin (scheme=https, exact host, AND port=443).
+    """
+    guard = make_url_guard(build_host_allowlist(VERSIONED_BASE))
+    with pytest.raises(DisallowedURLError):
+        await guard(
+            httpx.Request("POST", "https://version-12-0.string-db.org:8080/api/json/network"),
+        )
+
+
+@pytest.mark.asyncio
+async def test_guard_allows_explicit_default_port() -> None:
+    """The explicit default HTTPS port (:443) is the production origin: allowed."""
+    guard = make_url_guard(build_host_allowlist(VERSIONED_BASE))
+    await guard(
+        httpx.Request("POST", "https://version-12-0.string-db.org:443/api/json/network"),
+    )
+
+
+@pytest.mark.asyncio
+async def test_alternate_port_redirect_rejected() -> None:
+    """A 307 redirect to an allowlisted host on an alternate port fails closed.
+
+    307 preserves method+body, so ONLY the origin/port check can reject this hop:
+    it proves the guard is not fooled by an off-origin explicit port.
+    """
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.port in (None, 443):
+            return httpx.Response(
+                307,
+                headers={"location": "https://version-12-0.string-db.org:8080/api/json/network"},
+            )
+        raise AssertionError("guard must block the alternate-port hop")
+
+    client = _guarded_client(httpx.MockTransport(handler), VERSIONED_BASE)
+    try:
+        with pytest.raises(DisallowedURLError):
+            await client._make_request("network", {"identifiers": "TP53"})
+    finally:
+        await client.close()
+
+
+# --------------------------------------------------------------------------- #
+# F-17 gate fix 2: fail closed when a redirect changes method / drops the body #
+# --------------------------------------------------------------------------- #
+
+
+def test_check_no_redirect_method_change_flags_post_to_get() -> None:
+    """A 302 that rewrote POST->GET (dropping the body) must be flagged."""
+    original = httpx.Request("POST", "https://string-db.org/api/json/network")
+    redirect_resp = httpx.Response(302, request=original)
+    final_req = httpx.Request("GET", "https://version-12-0.string-db.org/api/json/network")
+    final_resp = httpx.Response(200, request=final_req, history=[redirect_resp])
+    with pytest.raises(RedirectBodyLossError):
+        check_no_redirect_method_change(final_resp)
+
+
+def test_check_no_redirect_method_change_allows_no_redirect() -> None:
+    """A direct (no-history) response never trips the method-change guard."""
+    req = httpx.Request("POST", "https://version-12-0.string-db.org/api/json/network")
+    check_no_redirect_method_change(httpx.Response(200, request=req))
+
+
+def test_check_no_redirect_method_change_allows_preserved_method() -> None:
+    """A 307 that preserved POST->POST (body intact) is permitted."""
+    original = httpx.Request("POST", "https://string-db.org/api/json/network")
+    redirect_resp = httpx.Response(307, request=original)
+    final_req = httpx.Request("POST", "https://version-12-0.string-db.org/api/json/network")
+    final_resp = httpx.Response(200, request=final_req, history=[redirect_resp])
+    check_no_redirect_method_change(final_resp)
+
+
+@pytest.mark.asyncio
+async def test_method_changing_redirect_fails_closed() -> None:
+    """A 302 generic->versioned redirect rewrites POST->GET (drops the form body).
+
+    Both hosts are allowlisted, so the origin guard permits the hop -- but httpx
+    then converts the POST to a bodyless GET. The client must FAIL CLOSED rather
+    than silently send the bodyless request and return the (wrong/empty) result.
+    """
+    production_allowlist = build_host_allowlist(GENERIC_BASE, VERSIONED_BASE)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "string-db.org":
+            return httpx.Response(
+                302,
+                headers={"location": "https://version-12-0.string-db.org/api/json/network"},
+            )
+        # Reaching here means httpx sent the rewritten bodyless GET -- the exact
+        # silent-failure the fix must prevent.
+        return httpx.Response(200, json=[{"stringId_A": "9606.ENSP1"}])
+
+    client = _guarded_client(
+        httpx.MockTransport(handler),
+        GENERIC_BASE,
+        allowed_hosts=production_allowlist,
+    )
+    try:
+        with pytest.raises(RedirectBodyLossError):
+            await client._make_request("network", {"identifiers": "TP53\rMDM2"})
+    finally:
+        await client.close()
+
+
+# --------------------------------------------------------------------------- #
+# F-17 gate fix 3: the blocked host never reaches a log record / response      #
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.asyncio
+async def test_guard_message_is_host_free() -> None:
+    """The DisallowedURLError carries a FIXED message -- never the blocked host."""
+    blocked = "attacker-controlled.evil.example"
+    guard = make_url_guard(build_host_allowlist(VERSIONED_BASE))
+    with pytest.raises(DisallowedURLError) as excinfo:
+        await guard(httpx.Request("POST", f"https://{blocked}/steal"))
+    assert blocked not in str(excinfo.value)
+
+
+@pytest.mark.asyncio
+async def test_blocked_host_redirect_never_logs_or_returns_host(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A blocked-host redirect leaks the attacker host to NEITHER logs NOR message.
+
+    The host arrives via a redirect ``Location`` (attacker-influenceable). Neither
+    the raised exception (which becomes the caller-visible message) nor any emitted
+    log record may contain it.
+    """
+    blocked = "attacker-controlled.evil.example"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "version-12-0.string-db.org":
+            return httpx.Response(307, headers={"location": f"https://{blocked}/steal"})
+        raise AssertionError("guard must block the cross-host redirect hop")
+
+    client = _guarded_client(httpx.MockTransport(handler), VERSIONED_BASE)
+    try:
+        with caplog.at_level(logging.DEBUG), pytest.raises(DisallowedURLError) as excinfo:
+            await client._make_request("network", {"identifiers": "TP53"})
+    finally:
+        await client.close()
+
+    assert blocked not in str(excinfo.value)
+    for record in caplog.records:
+        assert blocked not in record.getMessage()
+        assert blocked not in str(record.__dict__)
