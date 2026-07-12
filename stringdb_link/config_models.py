@@ -18,6 +18,10 @@ class StringDBAPIConfigModel(BaseModel):
         default="https://version-12-0.string-db.org/api",
         description="Base URL for StringDB API",
     )
+    redirect_base_url: str = Field(
+        default="https://string-db.org",
+        description="Documented generic STRING origin permitted for redirects",
+    )
     timeout: int = Field(
         default=30,
         ge=1,
@@ -66,7 +70,7 @@ class StringDBAPIConfigModel(BaseModel):
         description="API endpoint paths",
     )
 
-    @field_validator("base_url")
+    @field_validator("base_url", "redirect_base_url")
     @classmethod
     def validate_base_url(cls, v: str) -> str:
         """Ensure base URL doesn't end with forward slash."""

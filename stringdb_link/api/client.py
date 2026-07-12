@@ -94,17 +94,16 @@ class StringDBClient:
         self.caller_identity = caller_identity or "StringDB-Link/0.1.0"
         self.logger = logger or get_logger("stringdb_client")
 
-        # Exact-host allowlist for every outbound hop (F-17), derived from config.
-        self._allowed_hosts = stringdb_allowed_hosts(self.base_url)
+        self._allowed_hosts = stringdb_allowed_hosts(
+            self.base_url, settings.stringdb_redirect_base_url
+        )
 
-        # Initialize statistics tracking
         self.total_requests = 0
         self.successful_requests = 0
         self.failed_requests = 0
         self.response_times: list[float] = []
         self.start_time = time.time()
 
-        # Initialize adaptive rate limiter
         rate_per_second = rate_limit_per_second or (1.0 / settings.stringdb_rate_limit_delay)
         self.rate_limiter = AdaptiveRateLimiter(
             initial_rate=rate_per_second,
@@ -308,6 +307,10 @@ class StringDBClient:
             # it as a generic StringDBAPIError. All three messages are host-free.
             self.failed_requests += 1
             raise
+
+        except httpx.TooManyRedirects as e:
+            self.failed_requests += 1
+            raise DisallowedURLError("outbound request blocked by HTTP policy") from e
 
         except httpx.TimeoutException as e:
             self.failed_requests += 1

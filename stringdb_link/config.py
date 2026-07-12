@@ -122,6 +122,11 @@ class Settings(BaseSettings):
         return self.stringdb_api.base_url
 
     @property
+    def stringdb_redirect_base_url(self) -> str:
+        """Get the configured generic STRING redirect origin."""
+        return self.stringdb_api.redirect_base_url
+
+    @property
     def stringdb_request_timeout(self) -> int:
         """Get StringDB request timeout for backward compatibility."""
         return self.stringdb_api.timeout
