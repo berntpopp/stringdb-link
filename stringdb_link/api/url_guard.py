@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import SplitResult, urlsplit
 
 import httpx
 
@@ -46,7 +46,8 @@ HTTPS_DEFAULT_PORT = 443
 # FIXED, host-free guard message. The blocked host/scheme/port is NEVER
 # interpolated: it can be attacker-influenced (via a redirect ``Location``) and
 # must not reach a log record or a caller-visible message (F-17).
-_BLOCKED_URL_MSG = "outbound request blocked: URL is not the allowlisted STRING origin"
+_BLOCKED_URL_MSG = "outbound request blocked by HTTP policy"
+_SIZE_ERROR_MSG = "upstream response exceeds HTTP policy byte limit"
 
 # FIXED message for a method-changing redirect. Names no host; tells the operator
 # the actionable fix (pin the versioned host) rather than echoing the redirect.
@@ -68,33 +69,43 @@ class RedirectBodyLossError(Exception):
     """A followed redirect changed the request method, dropping the POST body. NON-RETRYABLE."""
 
 
-def build_host_allowlist(*base_urls: str) -> frozenset[str]:
+def _normalized_origin(url: str | SplitResult) -> tuple[str, int]:
+    """Normalize a configured HTTPS URL to its exact host and effective port."""
+    parsed = urlsplit(url) if isinstance(url, str) else url
+    try:
+        port = parsed.port if parsed.port is not None else HTTPS_DEFAULT_PORT
+    except ValueError as exc:
+        raise DisallowedURLError(_BLOCKED_URL_MSG) from exc
+    if parsed.scheme != "https" or parsed.username is not None or not parsed.hostname:
+        raise DisallowedURLError(_BLOCKED_URL_MSG)
+    return parsed.hostname.lower(), port
+
+
+def build_host_allowlist(*base_urls: str) -> frozenset[tuple[str, int]]:
     """Derive an exact-host allowlist from configured base URL(s).
 
     Hosts are never hardcoded: a STRING version bump changes the versioned host
     (``version-N-N.string-db.org``) and the base URL is operator-overridable, so
     the allowlist is seeded from the configured URL(s) at client-build time.
     """
-    hosts: set[str] = set()
+    origins: set[tuple[str, int]] = set()
     for url in base_urls:
-        host = urlsplit(url).hostname
-        if host:
-            hosts.add(host.lower())
-    return frozenset(hosts)
+        origins.add(_normalized_origin(url))
+    return frozenset(origins)
 
 
-def stringdb_allowed_hosts(base_url: str) -> frozenset[str]:
+def stringdb_allowed_hosts(base_url: str, redirect_base_url: str) -> frozenset[tuple[str, int]]:
     """Allowlist for the STRING client: the configured (versioned) host + generic.
 
     Production pins ``version-12-0.string-db.org`` (derived from ``base_url`` so a
     version bump follows the config), plus the generic ``string-db.org`` host that
     stable-address-redirects to it. Both are permitted; every other host is not.
     """
-    return build_host_allowlist(base_url, f"https://{GENERIC_STRING_HOST}")
+    return build_host_allowlist(base_url, redirect_base_url)
 
 
 def make_url_guard(
-    allowed_hosts: frozenset[str],
+    allowed_hosts: frozenset[tuple[str, int]],
 ) -> Callable[[httpx.Request], Awaitable[None]]:
     """Build an httpx request event-hook that validates every outgoing hop."""
 
@@ -113,13 +124,10 @@ def make_url_guard(
         # a bare ``:@`` form leaves empty (username == password == "").
         if url.userinfo:
             raise DisallowedURLError(_BLOCKED_URL_MSG)
-        host = (url.host or "").lower()
-        if host not in allowed_hosts:
-            raise DisallowedURLError(_BLOCKED_URL_MSG)
         # httpx normalises a default-port URL to ``port is None``; treat that as
         # 443 and reject any other explicit port.
         port = url.port if url.port is not None else HTTPS_DEFAULT_PORT
-        if port != HTTPS_DEFAULT_PORT:
+        if ((url.host or "").lower(), port) not in allowed_hosts:
             raise DisallowedURLError(_BLOCKED_URL_MSG)
 
     return _guard
@@ -153,7 +161,7 @@ async def read_capped(response: httpx.Response, max_bytes: int) -> bytes:
     async for chunk in response.aiter_bytes():
         total += len(chunk)
         if total > max_bytes:
-            raise ResponseTooLargeError(f"response exceeded {max_bytes} bytes")
+            raise ResponseTooLargeError(_SIZE_ERROR_MSG)
         chunks.append(chunk)
     return b"".join(chunks)
 

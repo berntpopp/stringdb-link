@@ -45,7 +45,7 @@ def _versioned_url(path: str = "/api/json/network") -> str:
 
 def test_build_host_allowlist_derives_from_base_url() -> None:
     allow = build_host_allowlist(VERSIONED_BASE, f"https://{GENERIC_STRING_HOST}")
-    assert allow == frozenset({"version-12-0.string-db.org", "string-db.org"})
+    assert allow == frozenset({("version-12-0.string-db.org", 443), ("string-db.org", 443)})
 
 
 @pytest.mark.asyncio
@@ -124,7 +124,7 @@ async def test_ensure_client_wires_guard_and_bounds_redirects() -> None:
         assert inner.max_redirects <= 5
         assert inner.event_hooks["request"], "request event-hook must be installed"
         assert client._allowed_hosts == frozenset(
-            {"version-12-0.string-db.org", "string-db.org"},
+            {("version-12-0.string-db.org", 443), ("string-db.org", 443)},
         )
     finally:
         await client.close()
@@ -133,7 +133,7 @@ async def test_ensure_client_wires_guard_and_bounds_redirects() -> None:
 def _guarded_client(
     handler: httpx.MockTransport,
     base_url: str,
-    allowed_hosts: frozenset[str] | None = None,
+    allowed_hosts: frozenset[tuple[str, int]] | None = None,
 ) -> StringDBClient:
     """A StringDBClient whose transport is mocked but whose real guard is wired."""
     client = StringDBClient(base_url=base_url)
@@ -199,7 +199,7 @@ async def test_generic_to_versioned_redirect_preserves_post_body() -> None:
     # Production allowlist: both the versioned host and the generic host.
     production_allowlist = build_host_allowlist(VERSIONED_BASE, GENERIC_BASE)
     assert production_allowlist == frozenset(
-        {"version-12-0.string-db.org", "string-db.org"},
+        {("version-12-0.string-db.org", 443), ("string-db.org", 443)},
     )
 
     seen_bodies: dict[str, bytes] = {}
