@@ -77,6 +77,35 @@ async def test_guard_rejects_userinfo() -> None:
         await guard(httpx.Request("POST", "https://user:pass@version-12-0.string-db.org/api/x"))
 
 
+@pytest.mark.asyncio
+async def test_guard_rejects_empty_userinfo() -> None:
+    """Syntactic *empty* userinfo (``:@`` form) on an allowlisted host is rejected.
+
+    httpx reports ``url.username == url.password == ""`` for ``https://:@host/…``,
+    so a ``username or password`` gate MISSES it -- but ``url.userinfo`` is the raw
+    ``b":"`` (truthy). The recipe permits NO userinfo at all, so the raw
+    ``url.userinfo`` must be the authoritative gate.
+    """
+    guard = make_url_guard(build_host_allowlist(VERSIONED_BASE))
+    with pytest.raises(DisallowedURLError):
+        await guard(httpx.Request("POST", "https://:@version-12-0.string-db.org/api/x"))
+
+
+@pytest.mark.asyncio
+async def test_guard_rejects_username_only_userinfo() -> None:
+    """Username-only userinfo (``user@`` form) on an allowlisted host is rejected."""
+    guard = make_url_guard(build_host_allowlist(VERSIONED_BASE))
+    with pytest.raises(DisallowedURLError):
+        await guard(httpx.Request("POST", "https://user@version-12-0.string-db.org/api/x"))
+
+
+@pytest.mark.asyncio
+async def test_guard_allows_clean_host_no_userinfo() -> None:
+    """The clean allowlisted origin with NO userinfo still passes the gate."""
+    guard = make_url_guard(build_host_allowlist(VERSIONED_BASE))
+    await guard(httpx.Request("POST", "https://version-12-0.string-db.org/api/x"))
+
+
 # --------------------------------------------------------------------------- #
 # Wiring: _ensure_client installs the guard + bounds redirects                #
 # --------------------------------------------------------------------------- #

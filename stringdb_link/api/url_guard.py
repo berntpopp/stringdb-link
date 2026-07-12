@@ -106,7 +106,12 @@ def make_url_guard(
         url = request.url
         if url.scheme != "https":
             raise DisallowedURLError(_BLOCKED_URL_MSG)
-        if url.username or url.password:
+        # Reject ANY syntactic userinfo -- the recipe permits none at all. httpx
+        # exposes the raw userinfo as bytes: ``b""`` when absent, else non-empty
+        # (``b":"`` for the empty ``:@`` form, ``b"user"``/``b"user:pass"`` etc).
+        # This is authoritative and subsumes the username/password fields, which
+        # a bare ``:@`` form leaves empty (username == password == "").
+        if url.userinfo:
             raise DisallowedURLError(_BLOCKED_URL_MSG)
         host = (url.host or "").lower()
         if host not in allowed_hosts:
