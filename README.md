@@ -252,6 +252,9 @@ StringDB-Link follows a clean architecture pattern:
 - Optional API key authentication
 - CORS configuration for web apps
 
+See [`SECURITY.md`](SECURITY.md) for the vulnerability-reporting process and the
+required repository settings (secret scanning / push protection) an operator must enable.
+
 ## 🤝 Contributing
 
 1. Fork the repository
