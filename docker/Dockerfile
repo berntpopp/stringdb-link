@@ -25,14 +25,17 @@ RUN python -m venv /opt/venv
 ENV VIRTUAL_ENV="/opt/venv" \
     PATH="/opt/venv/bin:$PATH"
 
+# Pin uv to a digest-pinned build of the official image instead of a floating
+# installer bootstrap (F-19) — reproducible, supply-chain-hardened.
+COPY --from=ghcr.io/astral-sh/uv:0.8.7@sha256:1e26f9a868360eeb32500a35e05787ffff3402f01a8dc8168ef6aee44aef0aab /uv /usr/local/bin/uv
+
 # Copy dependency files first for better layer caching
 WORKDIR /app
 COPY uv.lock pyproject.toml README.md ./
 
 # Install dependencies in the virtual environment
 # Install production dependencies only
-RUN pip install --upgrade pip uv && \
-    uv sync --frozen --no-dev --active --no-install-project
+RUN uv sync --frozen --no-dev --active --no-install-project
 
 # --- Production Stage ---
 # This stage creates the final, minimal production image
