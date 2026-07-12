@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.3] - 2026-07-12
+
+### Security
+
+- Adopted the canonical outbound HTTP Policy v1 for the configured STRING
+  origins, including the supported generic-to-versioned redirect. Redirect hops
+  are checked against the configured origins, decoded response bodies are
+  bounded, and policy failures use fixed, identifier-free errors. The
+  production client is bound to the shared conformance suite. Research use
+  only.
+
 ## [4.0.2] - 2026-07-11
 
 ### Security
