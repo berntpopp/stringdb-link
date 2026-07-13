@@ -3,8 +3,15 @@
 
 services:
   stringdb-link:
+    build: !reset null
+    image: "${STRINGDB_LINK_IMAGE:?Set STRINGDB_LINK_IMAGE to ghcr.io/berntpopp/stringdb-link@sha256:<digest>}"
+    pull_policy: missing
+    container_name: !reset null
+    env_file: !reset []
+
     # Production-specific environment variables
     environment:
+      GF_HEALTHCHECK_HOST: localhost
       LOGGING__LEVEL: INFO
       LOGGING__FORMAT: json
       RELOAD: "false"
@@ -16,6 +23,8 @@ services:
     # `!reset` (not []) is required because Compose MERGES list fields across -f
     # overlays — a plain `ports: []` would leave the base ${PORT:-8000}:8000 map.
     ports: !reset []
+    expose:
+      - "8000"
 
     # Container & Deployment Hardening Standard v1 (§2-4): read-only rootfs with
     # an explicit tmpfs scratch, all capabilities dropped, no privilege
@@ -28,36 +37,28 @@ services:
     cap_drop:
       - ALL
     init: true
-    pids_limit: 256
 
-    # Run REST plus hosted MCP through the project CLI.
-    command: ["stringdb-link", "server", "--transport", "unified", "--host", "0.0.0.0", "--port", "8000"]
+    command: !reset null
+    restart: on-failure
 
     # Production resource limits
-    deploy:
+    deploy: !override
       resources:
         limits:
           memory: 1G
           cpus: '1.0'
           pids: 256
-        reservations:
-          memory: 512M
-          cpus: '0.5'
-      
-      # Production restart policy
-      restart_policy:
-        condition: any
-        delay: 5s
-        max_attempts: 3
-        window: 120s
     
     # Enhanced health check for production
+    # Default header remains "Host: localhost"; GF_HEALTHCHECK_HOST lets CI
+    # render the exact central healthcheck command without changing that value.
     healthcheck:
-      test: ["CMD", "curl", "-f", "-H", "Host: localhost", "http://localhost:8000/api/health"]
-      interval: 20s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      test:
+        ["CMD", "sh", "-c", "curl -f -H \"Host: $${GF_HEALTHCHECK_HOST}\" http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
     
     # Production logging with rotation
     logging:
