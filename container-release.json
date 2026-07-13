@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "dockerfile": "docker/Dockerfile",
+  "target": "production",
+  "platform": "linux/amd64",
+  "service": {
+    "compose_files": [
+      "docker/docker-compose.yml",
+      "docker/docker-compose.prod.yml"
+    ],
+    "name": "stringdb-link",
+    "container_port": 8000,
+    "health_path": "/api/health",
+    "mcp_path": "/mcp",
+    "startup_timeout_seconds": 90
+  },
+  "data": {
+    "mode": "none",
+    "image_allowlist": []
+  },
+  "definitions": {
+    "contract": "data-independent"
+  },
+  "smoke": {
+    "profile": "compose-two-context"
+  }
+}
