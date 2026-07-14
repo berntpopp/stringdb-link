@@ -7,6 +7,14 @@ name: stringdb-link-npm
 
 services:
   stringdb-link:
+    # Deploy pulls the released, attested image; it never builds from source.
+    # `!reset` is required: the base compose file defines `build:`, and without this
+    # the merged model would still be buildable.
+    # Pin a digest, not a tag: there is no `latest`, and only a digest is immutable.
+    build: !reset null
+    image: ${STRINGDB_LINK_IMAGE:?Set STRINGDB_LINK_IMAGE to ghcr.io/berntpopp/stringdb-link@sha256:<digest>}
+    pull_policy: missing
+
     # Production environment optimized for NPM
     environment:
       LOGGING__LEVEL: INFO
