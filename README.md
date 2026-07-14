@@ -1,289 +1,119 @@
-# StringDB-Link
+# stringdb-link
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![CI](https://github.com/berntpopp/stringdb-link/actions/workflows/ci.yml/badge.svg)](https://github.com/berntpopp/stringdb-link/actions/workflows/ci.yml)
+[![Conformance](https://github.com/berntpopp/stringdb-link/actions/workflows/conformance.yml/badge.svg)](https://github.com/berntpopp/stringdb-link/actions/workflows/conformance.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-High-performance unified API server for the STRING protein-protein interaction database with both REST API and MCP (Model Context Protocol) support.
+An **MCP server over [STRING](https://string-db.org/)**, the protein–protein association
+network and functional-enrichment database. It serves STRING v12.0 as typed MCP tools over
+Streamable HTTP, with the same surface available as a FastAPI REST API.
 
-## 🚀 Features
+> [!IMPORTANT]
+> Research use only. Not clinical decision support. Do not use for diagnosis,
+> treatment, triage, or patient management.
 
-- **Dual Protocol Support**: Both HTTP REST API and MCP for AI applications
-- **Comprehensive Coverage**: All major STRING API endpoints
-- **High Performance**: Async/await throughout with intelligent caching
-- **Type Safety**: Complete type hints with Pydantic validation
-- **Rate Limiting**: Respects STRING's API rate limits
-- **Error Resilience**: Retry logic with exponential backoff
-- **Claude Desktop Ready**: Seamless integration with Claude Desktop
+## Why
 
-## 📋 Supported STRING Operations
+STRING has a public HTTP API, but it is built for scripts pasted into a browser, not for
+agents. Four concrete frictions:
 
-### Core Functionality
-- **Protein Identifier Resolution**: Map gene names, UniProt IDs to STRING identifiers
-- **Network Interactions**: Retrieve protein-protein interaction networks
-- **Interaction Partners**: Get all interaction partners for proteins
-- **Functional Enrichment**: Gene Ontology and pathway enrichment analysis
-- **Functional Annotations**: Protein annotations from multiple databases
-- **Network Visualization**: Generate protein network images (PNG/SVG)
+- **Nothing is keyed on gene symbols.** Every useful call wants a STRING protein ID
+  (`9606.ENSP00000269305`); getting one is a separate resolution step.
+- **Multi-protein queries are string-encoded.** Identifiers are joined with a literal
+  carriage return (`%0d`) inside a query parameter — easy to get silently wrong.
+- **Results are untyped rows** with terse column names (`stringId_A`, `escore`, `fscore`),
+  with no schema to validate against.
+- **The default host is a moving target.** STRING tells integrators to pin a versioned host
+  (`version-12-0.string-db.org`) so the same query keeps returning the same answer across
+  releases — and asks callers to wait one second between calls and to identify themselves.
 
-### Advanced Features
-- **Homology Analysis**: Protein similarity scores and cross-species homology
-- **PPI Enrichment**: Statistical analysis of interaction networks
-- **Enrichment Visualization**: Generate enrichment analysis figures
-- **Web Links**: Direct links to STRING website networks
+This server absorbs all four: it pins STRING v12.0, resolves identifiers, validates every
+parameter with Pydantic, returns typed envelopes, throttles to STRING's courtesy rate, and
+caches by result class. No data bundle, no ingest, no build step — it proxies STRING live.
 
-## 🛠️ Installation
+## Quick start
 
-### From Source
-```bash
-git clone https://github.com/stringdb-link/stringdb-link.git
-cd stringdb-link
-pip install -e ".[dev]"
-```
-
-### Using pip (when published)
-```bash
-pip install stringdb-link
-```
-
-## ⚡ Quick Start
-
-### Start HTTP Server
-```bash
-stringdb-link server --host 0.0.0.0 --port 8000
-```
-
-### Start MCP Server (for Claude Desktop)
-```bash
-stringdb-link mcp
-```
-
-### Start Unified Server (HTTP + MCP)
-```bash
-stringdb-link server --transport unified --port 8000
-```
-
-## 🔧 Configuration
-
-Create a `.env` file or set environment variables:
+Hosted — no install:
 
 ```bash
-# Server Configuration
-HOST=127.0.0.1
-PORT=8000
-TRANSPORT=unified
-ALLOWED_HOSTS=["localhost","127.0.0.1","::1"]
-ALLOWED_ORIGINS=[]
-
-# StringDB API Configuration
-STRINGDB_BASE_URL=https://version-12-0.string-db.org/api
-STRINGDB_RATE_LIMIT_DELAY=1.0
-
-# Caching Configuration
-CACHE_ENABLED=true
-CACHE_IDENTIFIER_TTL=86400  # 24 hours
-CACHE_NETWORK_TTL=43200     # 12 hours
-
-# Logging Configuration
-LOG_LEVEL=INFO
-LOG_FORMAT=json
+claude mcp add --transport http stringdb https://stringdb-link.genefoundry.org/mcp
 ```
 
-HTTP deployments enforce exact Host and Origin allowlists. Add the public
-reverse-proxy hostname to `ALLOWED_HOSTS`; wildcard host patterns are rejected.
-`ALLOWED_ORIGINS=[]` permits requests without an `Origin` header. These request
-guards are independent of the separate `CORS__ALLOW_ORIGINS` response policy.
+Local (Python 3.12+, [uv](https://github.com/astral-sh/uv)):
 
-## 📚 API Usage Examples
-
-### Resolve Protein Identifiers
 ```bash
-curl -X POST "http://localhost:8000/api/identifiers/resolve" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "identifiers": ["p53", "BRCA1", "cdk2"],
-    "species": 9606,
-    "echo_query": true
-  }'
+uv sync --group dev
+make dev                                     # REST + MCP on http://127.0.0.1:8000/mcp
+curl -s localhost:8000/health
+claude mcp add --transport http stringdb http://127.0.0.1:8000/mcp
 ```
 
-### Get Protein Interactions
-```bash
-curl -X POST "http://localhost:8000/api/networks/interactions" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "identifiers": ["TP53", "MDM2", "ATM"],
-    "species": 9606,
-    "required_score": 400,
-    "network_type": "functional"
-  }'
-```
+> [!NOTE]
+> MCP clients need the `unified` transport (what `make dev` runs). `--transport http` serves
+> the REST API **without** `/mcp`. See [deployment.md](docs/deployment.md#transports).
 
-### Functional Enrichment Analysis
-```bash
-curl -X POST "http://localhost:8000/api/enrichment/functional" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "identifiers": ["TP53", "MDM2", "ATM", "CHEK2", "BRCA1"],
-    "species": 9606
-  }'
-```
+## Tools
 
-## 🤖 MCP Integration (Claude Desktop)
+| Tool | Purpose |
+|------|---------|
+| `resolve_protein_identifiers` | Map gene symbols, synonyms or UniProt accessions to STRING protein IDs |
+| `search_protein_interactions` | Retrieve the interaction network among a set of proteins |
+| `get_interaction_partners` | List a protein's STRING interaction partners |
+| `compute_functional_enrichment` | Enrichment over GO, KEGG, UniProt keywords, PubMed, Pfam, InterPro and SMART |
+| `compute_ppi_enrichment` | Test whether a protein set has more interactions than expected by chance |
+| `get_functional_annotations` | Retrieve the functional annotations attached to each protein |
+| `get_protein_homology_scores` | Pairwise protein similarity (bit-scores) among the input proteins |
+| `get_protein_homology_best_hits` | Best similarity hit per species for the input proteins |
+| `get_network_link` | Build a shareable link to the network on the STRING website |
+| `get_network_image` | Render the network as an image (PNG, high-res PNG, or SVG) |
 
-Add to your Claude Desktop configuration:
+Leaf names are **unprefixed**, per Tool-Naming Standard v1. Behind
+[`genefoundry-router`](https://github.com/berntpopp/genefoundry-router) the server is mounted
+under the `stringdb` namespace, so tools surface as `stringdb_<tool>` — e.g.
+`stringdb_get_interaction_partners`. Do not self-prefix tool names; the gateway adds the
+namespace (a CI guard enforces this).
 
-```json
-{
-  "mcpServers": {
-    "stringdb-link": {
-      "command": "stringdb-link",
-      "args": ["mcp"],
-      "env": {
-        "STRINGDB_RATE_LIMIT_DELAY": "1.0"
-      }
-    }
-  }
-}
-```
+## Data & provenance
 
-### Available MCP Tools
+Data come live from the STRING REST API, pinned to **STRING v12.0**
+(`https://version-12-0.string-db.org/api`) so a query keeps its answer across STRING
+releases. There is no local mirror; freshness is STRING's, minus a per-result-class cache
+TTL (24 h for identifier mappings, 12 h for networks, 6 h for enrichment).
 
-Tool names follow the [GeneFoundry Tool-Naming Standard v1](#tool-naming-standard)
-(`verb_noun` snake_case, canonical verb, unprefixed):
+STRING asks callers to wait one second between requests; the client throttles to 1 req/s by
+default and identifies itself with `caller_identity`. **Do not bypass the throttle.**
 
-- `resolve_protein_identifiers`: Map protein names/symbols to STRING IDs
-- `search_protein_interactions`: Find protein network interactions
-- `get_interaction_partners`: Get interaction partners for proteins
-- `get_network_link`: Get a shareable STRING network view URL
-- `compute_functional_enrichment`: Run STRING functional enrichment analysis
-- `compute_ppi_enrichment`: Run STRING protein-protein interaction enrichment test
-- `get_functional_annotations`: Retrieve STRING functional annotations
-- `get_protein_homology_scores`: Get cross-species homology bit-scores
-- `get_protein_homology_best_hits`: Get best cross-species homology hits
-- `get_network_image`: Get a STRING network visualization image
+STRING data are licensed **[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)**.
+Cite STRING when publishing results derived from it:
 
-### Tool-Naming Standard
+> Szklarczyk D, Kirsch R, Koutrouli M, et al. The STRING database in 2023: protein–protein
+> association networks and functional enrichment analyses for any sequenced genome of
+> interest. *Nucleic Acids Res.* 2023;51(D1):D638–D646. doi:10.1093/nar/gkac1000
 
-This server is part of the **GeneFoundry MCP router** (`genefoundry-router`) fleet.
+Full detail — endpoint map, TTL rationale, identifier semantics: [data.md](docs/data.md).
 
-- **`serverInfo.name`** is set explicitly to `StringDB-Link Server`.
-- **Canonical gateway namespace token: `stringdb`.** Leaf tools are exposed
-  *unprefixed*; the router applies the namespace at mount time, so tools surface
-  at the gateway as `stringdb_<tool>` (e.g. `stringdb_search_protein_interactions`).
-  Do **not** add a `stringdb_` self-prefix to tool names — that would
-  double-prefix at the gateway.
+## Documentation
 
-A CI guard (`tests/unit/test_tool_names.py`) asserts that every registered tool
-matches `^[a-z0-9_]{1,50}$`, starts with a canonical verb
-(`get`/`search`/`list`/`resolve`/`find`/`compare`/`compute`), and does not
-self-prefix the `stringdb` namespace token.
+- [Configuration](docs/configuration.md) — every environment variable, the Host/Origin
+  request guards, CORS, cache TTLs and the MCP identity contract.
+- [Deployment](docs/deployment.md) — transports, entry points, Docker, running behind a
+  reverse proxy, and Claude Desktop wiring.
+- [Architecture](docs/architecture.md) — how the MCP surface is generated from the REST
+  routes, the MCP hardening layers, and the REST API with examples.
+- [Data & provenance](docs/data.md) — STRING sources, the v12.0 pin, caching, licence and
+  citation.
+- [STRING API reference](docs/rest-api.md) — the upstream API docs, vendored.
+- [SECURITY.md](SECURITY.md) — vulnerability reporting and required repository settings.
+- [AGENTS.md](AGENTS.md) — repository conventions for humans and coding agents.
 
-## 🧪 Development
+## Contributing
 
-### Setup Development Environment
-```bash
-git clone https://github.com/stringdb-link/stringdb-link.git
-cd stringdb-link
-pip install -e ".[dev]"
-pre-commit install
-```
+See [AGENTS.md](AGENTS.md) for engineering conventions (uv, Ruff, mypy strict, the 600-line
+module budget, test layout). `make ci-local` is the definition-of-done gate: format, lint,
+line budget, README standard, typecheck, and tests. It must be green before handoff.
 
-### Run Tests
-```bash
-pytest
-```
+## License
 
-### Run Linting
-```bash
-ruff check .
-ruff format .
-mypy .
-```
-
-### Check Configuration
-```bash
-stringdb-link validate-config
-```
-
-### Health Check
-```bash
-stringdb-link health
-```
-
-## 📖 API Documentation
-
-Once the server is running, visit:
-- **Swagger UI**: `http://localhost:8000/docs`
-- **ReDoc**: `http://localhost:8000/redoc`
-- **OpenAPI JSON**: `http://localhost:8000/openapi.json`
-
-## 🏗️ Architecture
-
-StringDB-Link follows a clean architecture pattern:
-
-```
-├── api/                    # HTTP client and route handlers
-│   ├── client.py          # StringDB HTTP client with caching
-│   └── routes/            # FastAPI route definitions
-├── models/                # Pydantic data models
-│   ├── requests.py        # Request validation models
-│   ├── responses.py       # Response serialization models
-│   └── stringdb.py        # StringDB-specific enums and constants
-├── services/              # Business logic layer
-├── utils/                 # Shared utilities
-├── config.py              # Configuration management
-├── exceptions.py          # Custom exception classes
-└── logging_config.py      # Structured logging setup
-```
-
-## 📊 Performance
-
-- **Response Time**: < 2 seconds for most queries
-- **Cache Hit Rate**: > 80% for repeated queries
-- **Concurrent Requests**: Supports 100+ concurrent requests
-- **Memory Usage**: Efficient with configurable cache limits
-
-## 🔒 Security
-
-- Input validation with Pydantic models
-- Rate limiting to prevent abuse
-- No sensitive data logging
-- Optional API key authentication
-- CORS configuration for web apps
-
-See [`SECURITY.md`](SECURITY.md) for the vulnerability-reporting process and the
-required repository settings (secret scanning / push protection) an operator must enable.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite (`pytest`)
-6. Run linting (`ruff check . && mypy .`)
-7. Commit your changes (`git commit -m 'Add amazing feature'`)
-8. Push to the branch (`git push origin feature/amazing-feature`)
-9. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [STRING Database](https://string-db.org/) for providing the comprehensive protein interaction data
-- [FastAPI](https://fastapi.tiangolo.com/) for the excellent web framework
-- [FastMCP](https://github.com/jlowin/fastmcp) for MCP integration
-- [Pydantic](https://pydantic-docs.helpmanual.io/) for data validation
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/stringdb-link/stringdb-link/issues)
-- **Documentation**: [Full Documentation](https://stringdb-link.readthedocs.io)
-- **Email**: dev@stringdb-link.org
-
----
-
-Made with ❤️ for the scientific community
+Code: [MIT](LICENSE) © Bernt Popp. STRING data: **CC BY 4.0** © the STRING Consortium —
+attribution required, and any changes or additions you make must be stated.

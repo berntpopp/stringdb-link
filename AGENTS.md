@@ -40,6 +40,9 @@ Required checks before claiming completion:
 
 - `make ci-local`
 
+One-time local setup: `make install`, then `uv run pre-commit install` to install the
+git hooks (Ruff, mypy, and the per-file line budget).
+
 Useful focused commands:
 
 - `make install`
@@ -48,6 +51,7 @@ Useful focused commands:
 - `make lint`
 - `make lint-fix`
 - `make lint-loc`
+- `make lint-readme`
 - `make typecheck`
 - `make typecheck-fast`
 - `make test`
@@ -71,6 +75,22 @@ Useful focused commands:
 - Type check with mypy strict targeting Python 3.12.
 - Keep FastAPI route behavior covered by route tests and service behavior
   covered by unit tests.
+
+## Documentation Discipline
+
+`README.md` follows the **GeneFoundry README Standard v1** and is machine-checked by
+`make lint-readme` (`scripts/check_readme.py`, copied verbatim across the fleet). It is
+the front door, not the manual: fixed section order, a 200-line hard ceiling, no
+hand-typed counts or scores. Reference docs live in `docs/`:
+
+- `docs/configuration.md` - environment variables and request guards
+- `docs/deployment.md` - transports, entry points, Docker, reverse proxy
+- `docs/architecture.md` - module layout, REST-to-MCP generation, REST examples
+- `docs/data.md` - STRING sources, caching, licence, citation
+
+Add a tool, update the README's `## Tools` table: `tests/unit/test_readme_tools.py`
+asserts the table equals the registered tool surface exactly, and CI fails otherwise.
+Do not move operator or reference detail back into the README; extend `docs/` instead.
 
 ## File Size Discipline
 
