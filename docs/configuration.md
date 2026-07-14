@@ -12,6 +12,10 @@ misspelled name fails silently — copy the names below exactly.
 List-valued variables (`ALLOWED_HOSTS`, `ALLOWED_ORIGINS`, the `CORS__*` lists) are parsed as
 **JSON arrays**: `ALLOWED_HOSTS=["localhost","127.0.0.1","::1"]`.
 
+The tables below are **exhaustive and machine-checked**: `tests/unit/test_config_docs_contract.py`
+walks the live settings model (`stringdb_link/config.py`) and fails if this page omits a
+variable or states a default the code does not set. A row here is a fact, not a description.
+
 ## Server
 
 | Variable | Default | Notes |
@@ -40,7 +44,7 @@ usual cause of a proxied deployment returning errors while `curl localhost` work
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `CORS__ALLOW_ORIGINS` | `[]` | Origins echoed in CORS response headers. |
+| `CORS__ALLOW_ORIGINS` | `["http://localhost:3000","http://127.0.0.1:3000"]` | Origins echoed in CORS response headers. The dev defaults are inert in production: the `ALLOWED_ORIGINS` request guard above rejects a browser request carrying either origin **before** CORS applies. Inject real origins via env. |
 | `CORS__ALLOW_CREDENTIALS` | `false` | Off by design: this backend is unauthenticated and holds no cookies or sessions. |
 | `CORS__ALLOW_METHODS` | `["GET","POST","PUT","DELETE","OPTIONS"]` | |
 | `CORS__ALLOW_HEADERS` | `["*"]` | |
@@ -57,8 +61,10 @@ spec forbids the combination and browsers reject it, so it can only ever be a fo
 | `STRINGDB_API__TIMEOUT` | `30` | Seconds. |
 | `STRINGDB_API__MAX_RETRIES` | `3` | Retries use exponential backoff. |
 | `STRINGDB_API__RETRY_DELAY` | `1.0` | Base backoff delay, seconds. |
-| `STRINGDB_API__CALLER_IDENTITY` | `StringDB-Link/…` | Sent to STRING on every call, as STRING requests. |
+| `STRINGDB_API__CALLER_IDENTITY` | `StringDB-Link/0.1.0` | Sent to STRING on every call, as STRING requests. |
+| `STRINGDB_API__USER_AGENT` | `StringDB-Link/0.1.0` | `User-Agent` header on every STRING call. |
 | `STRINGDB_API__REDIRECT_BASE_URL` | `https://string-db.org` | The only STRING origin redirects are allowed to target. |
+| `STRINGDB_API__ENDPOINTS` | *(map, see below)* | STRING paths keyed by operation: `resolve`, `network`, `interactions`, `enrichment`, `annotations`, `images`, `homology`, `homology_best`, `ppi_enrichment`, `enrichment_image`. Settable as a JSON object, but the defaults track the pinned STRING v12.0 API — overriding them is unsupported. |
 
 ## Caching
 
@@ -97,13 +103,24 @@ This backend is **unauthenticated by design** — the `genefoundry-router` / rev
 edge auth at the trust boundary. It must never be published directly. See
 [`../SECURITY.md`](../SECURITY.md).
 
+## Health check
+
+| Variable | Default | Notes |
+|----------|---------|-------|
+| `HEALTH_CHECK__ENABLED` | `true` | Serve `GET /health`. |
+| `HEALTH_CHECK__INTERVAL` | `30` | Seconds; the interval the container healthcheck is expected to poll on. |
+| `HEALTH_CHECK__TIMEOUT` | `10` | Seconds. |
+
 ## Logging
 
 | Variable | Default | Notes |
 |----------|---------|-------|
 | `LOGGING__LEVEL` | `INFO` | `DEBUG` … `CRITICAL`. |
-| `LOGGING__FORMAT` | `text` | `text` or `json`. |
-| `LOGGING__FILE_ENABLED` | `false` | Plus `FILE_PATH`, `FILE_MAX_SIZE`, `FILE_BACKUP_COUNT`. |
+| `LOGGING__FORMAT` | `json` | `json` or `text`. JSON is the default so logs are machine-parseable in a container. |
+| `LOGGING__FILE_ENABLED` | `false` | Log to a file in addition to stdout. |
+| `LOGGING__FILE_PATH` | `./logs/stringdb-link.log` | Only used when `FILE_ENABLED` is true. |
+| `LOGGING__FILE_MAX_SIZE` | `10485760` | Bytes before rotation (10 MiB). |
+| `LOGGING__FILE_BACKUP_COUNT` | `5` | Rotated files kept. |
 
 Logging is structured (structlog). A redaction processor
 (`stringdb_link/logging_config.py`, `redact_sensitive_processor`) strips sensitive values
@@ -121,8 +138,8 @@ from every event, so secrets do not reach the logs; it is guarded by
 > `MCP__SERVER_NAME` is a **federation identity contract**, not cosmetics. The conformance
 > gate (`.github/workflows/conformance.yml`, `CONFORMANCE_NAME: stringdb-link`) and the
 > router's registry both assert `serverInfo.name == stringdb-link`. Overriding it breaks
-> discovery behind the gateway. Note that `.env.example` currently ships a different value
-> (`StringDB-Link Server`); the code default `stringdb-link` is the ratified one.
+> discovery behind the gateway. The env templates therefore ship the ratified value, and
+> `tests/unit/test_config_docs_contract.py` fails if one of them drifts away from it.
 
 `serverInfo.version` is single-sourced from the installed package metadata
 (`stringdb_link.__version__`), guarded by `tests/unit/test_version_single_source.py`.

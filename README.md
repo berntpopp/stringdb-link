@@ -95,8 +95,9 @@ Full detail — endpoint map, TTL rationale, identifier semantics: [data.md](doc
 
 ## Documentation
 
-- [Configuration](docs/configuration.md) — every environment variable, the Host/Origin
-  request guards, CORS, cache TTLs and the MCP identity contract.
+- [Configuration](docs/configuration.md) — every environment variable (the tables are
+  machine-checked against the live settings model), the Host/Origin request guards, CORS,
+  cache TTLs and the MCP identity contract.
 - [Deployment](docs/deployment.md) — transports, entry points, Docker, running behind a
   reverse proxy, and Claude Desktop wiring.
 - [Architecture](docs/architecture.md) — how the MCP surface is generated from the REST
