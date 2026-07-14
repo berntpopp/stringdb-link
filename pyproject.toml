@@ -61,12 +61,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/stringdb-link/stringdb-link"
-Documentation = "https://stringdb-link.readthedocs.io"
-Repository = "https://github.com/stringdb-link/stringdb-link"
-"Bug Tracker" = "https://github.com/stringdb-link/stringdb-link/issues"
-Changelog = "https://github.com/stringdb-link/stringdb-link/blob/main/CHANGELOG.md"
-
+Homepage = "https://github.com/berntpopp/stringdb-link"
+Repository = "https://github.com/berntpopp/stringdb-link"
+"Bug Tracker" = "https://github.com/berntpopp/stringdb-link/issues"
+Changelog = "https://github.com/berntpopp/stringdb-link/blob/main/CHANGELOG.md"
 [project.scripts]
 stringdb-link = "stringdb_link.cli:main"
 stringdb-mcp = "mcp_server:main"
