@@ -449,6 +449,20 @@ class LinkInfo(BaseResponse):
             "example": "https://version-12-0.string-db.org/cgi/network?networkId=abc123"
         },
     )
+    output_format: str = Field(
+        "json",
+        description="The requested output_format this link was rendered for",
+        json_schema_extra={"example": "json"},
+    )
+    formatted: str | None = Field(
+        None,
+        description=(
+            "STRING's serialization of the link in the requested output_format "
+            "(tsv/tsv-no-header/xml). Null for json — the structured 'url' IS the "
+            "json representation."
+        ),
+        json_schema_extra={"example": "url\nhttps://version-12-0.string-db.org/cgi/link?to=abc123"},
+    )
 
 
 class ErrorResponse(BaseResponse):

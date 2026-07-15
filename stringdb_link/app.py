@@ -151,6 +151,11 @@ def create_mcp_app() -> FastMCP:
         # ergonomics, and redundant with the JSON tools.
         RouteMap(pattern=r"^/api/homology/scores/download$", mcp_type=MCPType.EXCLUDE),
         RouteMap(pattern=r"^/api/homology/best-hits/download$", mcp_type=MCPType.EXCLUDE),
+        # Exclude the binary image download: it returns raw bytes (image/png,
+        # image/svg+xml) that cannot ride inside a structured MCP envelope. The MCP
+        # surface uses /api/images/network/json (operation_id get_network_image),
+        # which base64-encodes the image into the envelope.
+        RouteMap(pattern=r"^/api/images/network$", mcp_type=MCPType.EXCLUDE),
     ]
 
     # Create FastMCP instance. mask_error_details=True keeps internal exception

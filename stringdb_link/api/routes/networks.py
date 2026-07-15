@@ -323,11 +323,14 @@ async def get_network_link(
     request: LinkRequest,
     service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
-    output_format: Literal["json"] = Query(
+    output_format: Literal["json", "tsv", "tsv-no-header", "xml"] = Query(
         "json",
         description=(
-            "Response format. Only 'json' is supported: it returns the shareable "
-            "STRING URL inside a structured envelope. Any other value is rejected."
+            "STRING serialization of the shareable link. All four formats convey the "
+            "same URL: 'json' returns it structured in 'url'; 'tsv', 'tsv-no-header' "
+            "and 'xml' return STRING's text in 'formatted' with the URL also extracted "
+            "into 'url'. (STRING's psi-mi/image/svg link formats are not offered — they "
+            "carry no link payload.)"
         ),
         examples=["json"],
     ),
@@ -350,11 +353,11 @@ async def get_network_link(
             species=request.species,
         )
 
-        # ``output_format`` is constrained to "json" at the schema boundary, so the
-        # only reachable path returns the structured LinkInfo envelope. The former
-        # plain-text branch produced an empty MCP structured result (silent-empty)
-        # and has been removed.
-        return await service.get_network_link(request)
+        # Every format is shaped into the structured LinkInfo envelope: json fills
+        # ``url``; tsv/tsv-no-header/xml fill ``formatted`` (STRING's raw text) with
+        # the URL also extracted into ``url``. The former plain-text branch produced
+        # an empty MCP structured result (silent-empty) and has been removed.
+        return await service.get_network_link(request, output_format=output_format)
 
     except StringDBServiceError as e:
         # Log the error type only. The raw identifiers and str(e) can embed the

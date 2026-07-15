@@ -163,12 +163,35 @@ def wrap_structured_error_tools(route: Any, component: Any) -> None:
 
         elapsed_ms = (time.perf_counter() - start) * 1000
         raw = result.structured_content if isinstance(result.structured_content, dict) else {}
-        success_envelope = envelope.build_success_envelope(
-            tool_name,
-            raw,
-            request_id=envelope.new_request_id(),
-            elapsed_ms=elapsed_ms,
+        return finalize_tool_result(
+            tool_name, raw, request_id=envelope.new_request_id(), elapsed_ms=elapsed_ms
         )
-        return ToolResult(structured_content=success_envelope)
 
     object.__setattr__(component, "run", run_with_structured_errors)
+
+
+def finalize_tool_result(
+    tool_name: str,
+    raw: dict[str, Any],
+    *,
+    request_id: str,
+    elapsed_ms: float,
+) -> ToolResult:
+    """Shape a tool's SUCCESSFULLY-RETURNED payload into the final ToolResult.
+
+    A payload that is already an error frame (``success: false``) is surfaced as an
+    error WITH the wire-level ``isError`` bit set — never re-wrapped as a success.
+    Without this, a route/tool that RETURNS ``{"success": false, ...}`` (rather than
+    raising) would be wrapped as ``{"success": true, "result": {...}}`` with
+    ``isError: false``, hiding the failure from a client that branches on ``isError``.
+    """
+    if envelope.is_error_payload(raw):
+        error_envelope = envelope.build_returned_error_envelope(
+            tool_name, raw, request_id=request_id, elapsed_ms=elapsed_ms
+        )
+        return ToolResult(structured_content=error_envelope, is_error=True)
+
+    success_envelope = envelope.build_success_envelope(
+        tool_name, raw, request_id=request_id, elapsed_ms=elapsed_ms
+    )
+    return ToolResult(structured_content=success_envelope)

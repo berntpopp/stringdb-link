@@ -7,6 +7,7 @@ caching, and data transformations.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import ValidationError as PydanticValidationError
@@ -48,34 +49,44 @@ if TYPE_CHECKING:
     from stringdb_link.models.responses import LinkInfo, PPIEnrichmentResult
 
 
-#: STRING's ``interaction_partners`` endpoint caps returned partners per protein at
-#: 500. We always request this fixed page so ``total_count`` is a property of the
-#: result set (invariant of the caller's ``limit``) and truncate client-side.
-_PARTNER_UPSTREAM_LIMIT = 500
-
 #: Field named in the invalid_input envelope when STRING reports an in-band error
 #: about the caller-supplied background proteome.
 _BACKGROUND_FIELD = "background_string_identifiers"
-#: Fixed, server-authored message. The upstream STRING error prose is NEVER echoed
-#: (it is caller-influenceable); only this constant and the offending field name
+#: Default offending field for any OTHER STRING in-band error: the query proteins are
+#: what STRING validates (unknown/misspelled identifiers, unsupported species, etc.).
+_DEFAULT_INPUT_FIELD = "identifiers"
+#: Fixed, server-authored messages. The upstream STRING error prose is NEVER echoed
+#: (it is caller-influenceable); only these constants and the offending field name
 #: reach the caller (security posture).
 _BACKGROUND_ERROR_MESSAGE = (
     "The custom background proteome is invalid: it must be a superset of the query "
     "identifiers. Adjust 'background_string_identifiers' so it contains every query "
     "protein, or omit it to use the whole-genome background."
 )
-_GENERIC_INPUT_MESSAGE = "The request was rejected by the upstream STRING API as invalid."
+_GENERIC_INPUT_MESSAGE = (
+    "The upstream STRING API rejected the request as invalid; check the query "
+    "'identifiers' (and 'species'). This is not a transient outage — retrying "
+    "unchanged will fail identically."
+)
+
+#: STRING in-band error type -> the offending input field it names. Any type not
+#: listed falls back to ``_DEFAULT_INPUT_FIELD`` — the general class is handled, not
+#: just the one known case (a new STRING error type still yields invalid_input with a
+#: named field, never a false retryable upstream_unavailable or a field-less error).
+_STRING_ERROR_FIELD: dict[str, str] = {
+    "background_error": _BACKGROUND_FIELD,
+}
 
 
 def _raise_if_string_error(payload: object) -> None:
     """Map STRING's in-band error shape onto a client-side ``invalid_input``.
 
     STRING returns HTTP 200 with a body like ``[{"error": "background_error",
-    "message": "..."}]`` for a bad request (e.g. a background that is not a
-    superset of the query). Left unhandled, building a typed model from that body
-    raises a validation error that the service mis-maps to ``upstream_unavailable``
-    (retryable) — a false "the upstream is down, retry forever". Detect the shape
-    here and raise ``ValidationError`` (400 → invalid_input, non-retryable) naming
+    "message": "..."}]`` for a bad request. Left unhandled, building a typed model
+    from that body raises a validation error that the service mis-maps to
+    ``upstream_unavailable`` (retryable) — a false "the upstream is down, retry
+    forever". Detect the shape here for the GENERAL class (any ``{"error": ...}``
+    item) and raise ``ValidationError`` (400 → invalid_input, non-retryable) naming
     the offending parameter, without echoing the upstream prose.
     """
     item: dict[str, object] | None = None
@@ -85,9 +96,49 @@ def _raise_if_string_error(payload: object) -> None:
         item = payload
     if item is None or not item.get("error"):
         return
-    if item.get("error") == "background_error":
+    error_type = str(item.get("error"))
+    if error_type == "background_error":
         raise ValidationError(_BACKGROUND_ERROR_MESSAGE, field=_BACKGROUND_FIELD)
-    raise ValidationError(_GENERIC_INPUT_MESSAGE)
+    field = _STRING_ERROR_FIELD.get(error_type, _DEFAULT_INPUT_FIELD)
+    raise ValidationError(_GENERIC_INPUT_MESSAGE, field=field)
+
+
+def _extract_url(raw: str) -> str:
+    """Pull the shareable URL out of STRING's tsv/tsv-no-header/xml link response.
+
+    get_link conveys the same URL in every format (``url\\n<url>`` for tsv, the bare
+    line for tsv-no-header, ``<url>...</url>`` for xml). Match the first ``http(s)``
+    token; fall back to the stripped body so the structured ``url`` is never empty.
+    """
+    # Exclude whitespace and markup delimiters so the trailing ``</url>`` in the xml
+    # form (``<url>https://...</url>``) is not swallowed into the URL.
+    match = re.search(r"https?://[^\s<>\"']+", raw)
+    if match:
+        return match.group(0)
+    return raw.strip()
+
+
+def _limit_partners_per_protein(
+    partners: list[InteractionPartner], limit: int
+) -> list[InteractionPartner]:
+    """Return at most ``limit`` partners PER QUERY PROTEIN, preserving order.
+
+    STRING's ``limit`` is per-protein and its rows arrive grouped by the query
+    protein (``string_id_a`` / ``stringId_A``), most-confident first. Grouping here
+    — rather than a global ``partners[:limit]`` — guarantees every queried protein is
+    represented: a global head-slice returns only the first protein's partners once
+    it has ``limit`` of them and silently omits every later protein.
+    """
+    counts: dict[str, int] = {}
+    kept: list[InteractionPartner] = []
+    for partner in partners:
+        query_id = partner.string_id_a
+        seen = counts.get(query_id, 0)
+        if seen >= limit:
+            continue
+        counts[query_id] = seen + 1
+        kept.append(partner)
+    return kept
 
 
 class StringDBService:
@@ -279,19 +330,20 @@ class StringDBService:
                 network_type=request.network_type,
             )
 
-            # Fetch a fixed, limit-independent page from STRING (its per-protein cap
-            # is 500) and truncate client-side. This keeps ``total_count`` a property
-            # of the result set, invariant of the caller's ``limit`` (an honest total),
-            # and lets ``truncated`` signal that more partners exist.
+            # STRING's ``limit`` is PER PROTEIN. Fetch the FULL partner set (no upstream
+            # limit) so ``total_count`` is the true count, invariant of the caller's
+            # ``limit``; then apply ``limit`` PER QUERY PROTEIN so every queried protein
+            # is represented (a global head-slice would return only the first protein's
+            # partners and omit every later protein entirely).
             all_partners = await self._cached_get_interaction_partners(
                 identifiers=tuple(request.identifiers),
                 species=request.species,
-                limit=_PARTNER_UPSTREAM_LIMIT,
+                limit=None,
                 required_score=round(request.required_score * 1000),
                 network_type=request.network_type.value,
             )
+            limited = _limit_partners_per_protein(all_partners, request.limit)
             total = len(all_partners)
-            limited = all_partners[: request.limit]
 
             self.logger.info(
                 "Successfully retrieved interaction partners",
@@ -324,7 +376,7 @@ class StringDBService:
         self,
         identifiers: tuple[str, ...],
         species: int | None,
-        limit: int,
+        limit: int | None,
         required_score: int,
         network_type: str,
     ) -> list[InteractionPartner]:
@@ -781,14 +833,18 @@ class StringDBService:
             msg = f"Failed to get PPI enrichment: {e}"
             raise StringDBServiceError(msg) from e
 
-    async def get_network_link(self, request: LinkRequest) -> LinkInfo:
+    async def get_network_link(self, request: LinkRequest, output_format: str = "json") -> LinkInfo:
         """Get shareable link to STRING webpage for the network.
 
         Args:
             request: Link generation request
+            output_format: STRING serialization to render (json/tsv/tsv-no-header/xml).
+                Every format conveys the same shareable URL; for non-json formats the
+                raw STRING text is returned in ``LinkInfo.formatted`` and the URL is
+                extracted into ``LinkInfo.url`` so the MCP result is never empty.
 
         Returns:
-            Link information with URL
+            Link information with URL (and, for non-json, the formatted serialization)
 
         Raises:
             StringDBServiceError: If the operation fails
@@ -807,26 +863,30 @@ class StringDBService:
                 "network_flavor": request.network_flavor.value,
             }
 
-            from stringdb_link.models.stringdb import OutputFormat
-
+            fmt = OutputFormat(output_format)
             result = await self.client.get_link(
                 identifiers=request.identifiers,
                 species=request.species,
-                output_format=OutputFormat.JSON,
+                output_format=fmt,
                 **link_params,
             )
 
-            # Extract URL from result
-            url = result.get("url", str(result)) if isinstance(result, dict) else str(result)
-
             from stringdb_link.models.responses import LinkInfo
 
-            link_info = LinkInfo(url=url)
+            if fmt == OutputFormat.JSON:
+                # client.get_link already unwrapped STRING's ["<url>"] to the url string
+                # (or a {"url": ...} dict for defensive parity).
+                url = result.get("url", str(result)) if isinstance(result, dict) else str(result)
+                link_info = LinkInfo(url=url, output_format=fmt.value, formatted=None)
+            else:
+                raw = str(result)
+                link_info = LinkInfo(url=_extract_url(raw), output_format=fmt.value, formatted=raw)
 
             # Count/status only — never the raw identifiers or generated URL (PII).
             self.logger.info(
                 "Successfully generated network link",
                 identifier_count=len(request.identifiers),
+                output_format=fmt.value,
             )
 
             return link_info

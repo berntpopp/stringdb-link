@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from stringdb_link.mcp.untrusted_content import (
     UntrustedText,
@@ -309,6 +309,71 @@ def build_error_envelope(
         if cleaned:
             envelope["field_errors"] = cleaned
             envelope["field"] = cleaned[0]
+    envelope["_meta"] = _augment_meta(
+        {}, tool_name=tool_name, request_id=request_id, elapsed_ms=elapsed_ms
+    )
+    return envelope
+
+
+#: The six canonical error codes (keys of the message map are exactly the enum).
+_ERROR_CODE_SET: frozenset[str] = frozenset(_SAFE_ERROR_MESSAGE)
+
+
+def is_error_payload(raw: object) -> bool:
+    """True if a tool's returned payload is already an error frame (``success: false``).
+
+    Such a payload must be surfaced with the wire-level ``isError`` bit set, not
+    wrapped as a success — otherwise a client branching on ``isError`` sees a failure
+    reported as a successful call.
+    """
+    return isinstance(raw, dict) and raw.get("success") is False
+
+
+def build_returned_error_envelope(
+    tool_name: str,
+    raw: dict[str, Any],
+    *,
+    request_id: str,
+    elapsed_ms: float,
+) -> dict[str, Any]:
+    """Normalize a tool-RETURNED ``{"success": false, ...}`` payload into the error
+    frame, closing ``error_code`` to the canonical enum and re-augmenting ``_meta``.
+
+    Distinct from :func:`build_error_envelope` (which classifies from an HTTP status):
+    here the payload already carries an ``error_code``/``message``, so they are
+    preserved when valid and defaulted when not. All caller-derived strings are
+    sanitized; an off-enum ``error_code`` collapses to ``internal``.
+    """
+    code = raw.get("error_code")
+    error_code: ErrorCode = cast("ErrorCode", code) if code in _ERROR_CODE_SET else "internal"
+    raw_message = raw.get("message")
+    message = (
+        sanitize_message(raw_message)
+        if isinstance(raw_message, str) and raw_message
+        else _SAFE_ERROR_MESSAGE[error_code]
+    )
+    retryable = raw.get("retryable")
+    if not isinstance(retryable, bool):
+        retryable = error_code in ("upstream_unavailable", "rate_limited")
+    recovery = raw.get("recovery_action")
+    if not isinstance(recovery, str) or not recovery:
+        recovery = _GENERIC_RECOVERY_ACTION[error_code]
+
+    envelope: dict[str, Any] = {
+        "success": False,
+        "error_code": error_code,
+        "message": message,
+        "retryable": retryable,
+        "recovery_action": recovery,
+    }
+    field_errors = raw.get("field_errors")
+    if isinstance(field_errors, list):
+        cleaned = [sanitize_message(str(n))[:64] for n in field_errors if str(n)]
+        if cleaned:
+            envelope["field_errors"] = cleaned
+            envelope["field"] = cleaned[0]
+    elif isinstance(raw.get("field"), str) and raw["field"]:
+        envelope["field"] = sanitize_message(raw["field"])[:64]
     envelope["_meta"] = _augment_meta(
         {}, tool_name=tool_name, request_id=request_id, elapsed_ms=elapsed_ms
     )

@@ -213,6 +213,32 @@ async def test_image_tool_returns_base64_success_envelope(facade: Any) -> None:
 
 
 @pytest.mark.asyncio
+async def test_empty_image_body_is_error_not_success(facade: Any) -> None:
+    """An empty upstream image body must surface as an error, never success with
+    0 bytes and an empty base64 string (that would be a silent-empty success)."""
+    image = NetworkImageResponse(
+        image=NetworkImage(image_data=b"", image_format="image", content_type="image/png")
+    )
+    with patch(
+        "stringdb_link.services.stringdb_service.StringDBService.get_network_image",
+        new_callable=AsyncMock,
+        return_value=image,
+    ):
+        async with Client(facade) as client:
+            result = await client.call_tool(
+                "get_network_image",
+                {"identifiers": ["nup100"], "species": 4932},
+                raise_on_error=False,
+            )
+
+    body = result.structured_content
+    assert body is not None
+    assert result.is_error is True
+    assert body["success"] is False
+    assert body["error_code"] == "upstream_unavailable"
+
+
+@pytest.mark.asyncio
 async def test_every_tool_declares_read_only_open_world_annotations(facade: Any) -> None:
     """Every stringdb-link tool is a read-only STRING lookup (open world)."""
     tools = await facade.list_tools()
