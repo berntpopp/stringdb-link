@@ -16,18 +16,21 @@ contract, not a REST response-body contract.
 
 Mirrors the fleet's conformant exemplar (genereviews-link / clingen-link):
 errors are RETURNED as structured content (``success: false`` in-band) rather
-than raised as an opaque ``ToolError`` text blob. The installed FastMCP 3.3.1 /
-mcp SDK give no supported way to combine a wire-level ``isError: true`` with a
-populated ``structuredContent`` on the return path (raising loses
-``structuredContent`` entirely), so — like the rest of the fleet — we rely on
-the in-band ``success`` flag rather than the wire ``isError`` bit.
+than raised as an opaque ``ToolError`` text blob. Verified against the installed
+FastMCP 3.4.4, ``ToolResult(structured_content=envelope, is_error=True)`` carries
+BOTH the wire-level ``isError: true`` bit AND the populated ``structuredContent``
+frame on the return path — so the error carrier
+(``stringdb_link.mcp.error_passthrough``) sets ``is_error=True`` and clients that
+branch on the protocol ``isError`` bit see the failure, exactly as
+Response-Envelope Standard v1 requires. (Only the ``raise`` path loses
+``structuredContent``; the return path does not.)
 """
 
 from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from stringdb_link.mcp.untrusted_content import (
     UntrustedText,
@@ -79,15 +82,17 @@ def _untrusted_text_object_defs() -> dict[str, Any]:
     return defs
 
 
-# Closed error-code enum (Response-Envelope Standard v1 §2), harmonized with the
-# codes used fleet-wide (e.g. clingen-link's ``internal_error``).
+# Closed error-code enum (Response-Envelope Standard v1 §2). Exactly the six
+# canonical fleet codes — the behaviour gate (docs/conformance/behaviour.py)
+# rejects anything outside this set. ``internal`` (not ``internal_error``) is the
+# canonical spelling for a non-retryable server-side failure.
 ErrorCode = Literal[
     "invalid_input",
     "not_found",
     "ambiguous_query",
     "upstream_unavailable",
     "rate_limited",
-    "internal_error",
+    "internal",
 ]
 
 
@@ -132,7 +137,7 @@ _STATUS_CODE_MAP: dict[int, tuple[ErrorCode, bool]] = {
     413: ("invalid_input", False),
     422: ("invalid_input", False),
     429: ("rate_limited", True),
-    500: ("internal_error", False),
+    500: ("internal", False),
     502: ("upstream_unavailable", True),
     503: ("upstream_unavailable", True),
     504: ("upstream_unavailable", True),
@@ -145,7 +150,7 @@ _GENERIC_RECOVERY_ACTION: dict[ErrorCode, str] = {
     "ambiguous_query": "Narrow the query so it resolves to a single result.",
     "upstream_unavailable": "Retry with backoff; the upstream STRING API was unavailable.",
     "rate_limited": "Retry after backing off; the STRING API request rate was exceeded.",
-    "internal_error": "Retry once; if the error persists the request could not be completed.",
+    "internal": "Retry once; if the error persists the request could not be completed.",
 }
 
 # Fixed, server-authored, body-free error messages keyed by the classified code.
@@ -160,7 +165,7 @@ _SAFE_ERROR_MESSAGE: dict[ErrorCode, str] = {
     "ambiguous_query": "The query was ambiguous; narrow it to a single result.",
     "upstream_unavailable": "The upstream STRING API is unavailable.",
     "rate_limited": "The STRING API request rate was exceeded.",
-    "internal_error": "An internal error occurred while processing the request.",
+    "internal": "An internal error occurred while processing the request.",
 }
 
 
@@ -274,6 +279,7 @@ def build_error_envelope(
     message: str,
     request_id: str,
     elapsed_ms: float,
+    field_errors: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build the flat, in-band error frame (Response-Envelope Standard v1 §2).
 
@@ -283,6 +289,12 @@ def build_error_envelope(
     :func:`sanitize_message` here as a belt-and-suspenders backstop so no forbidden
     control/zero-width/bidi/NUL code point reaches the caller by any error path,
     even if a caller passes an unsanitized string.
+
+    ``field_errors`` (when supplied) names the offending input parameter(s). It is
+    derived ONLY from the request-validation ``loc`` path — i.e. this server's own
+    schema parameter names, never any caller/upstream prose — so an LLM can
+    self-correct (Response-Envelope Standard v1: an error must be actionable). Each
+    name is sanitized as a defensive backstop.
     """
     error_code, retryable = classify_status(status_code)
     envelope: dict[str, Any] = {
@@ -292,6 +304,76 @@ def build_error_envelope(
         "retryable": retryable,
         "recovery_action": _GENERIC_RECOVERY_ACTION[error_code],
     }
+    if field_errors:
+        cleaned = [sanitize_message(str(name))[:64] for name in field_errors if str(name)]
+        if cleaned:
+            envelope["field_errors"] = cleaned
+            envelope["field"] = cleaned[0]
+    envelope["_meta"] = _augment_meta(
+        {}, tool_name=tool_name, request_id=request_id, elapsed_ms=elapsed_ms
+    )
+    return envelope
+
+
+#: The six canonical error codes (keys of the message map are exactly the enum).
+_ERROR_CODE_SET: frozenset[str] = frozenset(_SAFE_ERROR_MESSAGE)
+
+
+def is_error_payload(raw: object) -> bool:
+    """True if a tool's returned payload is already an error frame (``success: false``).
+
+    Such a payload must be surfaced with the wire-level ``isError`` bit set, not
+    wrapped as a success — otherwise a client branching on ``isError`` sees a failure
+    reported as a successful call.
+    """
+    return isinstance(raw, dict) and raw.get("success") is False
+
+
+def build_returned_error_envelope(
+    tool_name: str,
+    raw: dict[str, Any],
+    *,
+    request_id: str,
+    elapsed_ms: float,
+) -> dict[str, Any]:
+    """Normalize a tool-RETURNED ``{"success": false, ...}`` payload into the error
+    frame, closing ``error_code`` to the canonical enum and re-augmenting ``_meta``.
+
+    Distinct from :func:`build_error_envelope` (which classifies from an HTTP status):
+    here the payload already carries an ``error_code``/``message``, so they are
+    preserved when valid and defaulted when not. All caller-derived strings are
+    sanitized; an off-enum ``error_code`` collapses to ``internal``.
+    """
+    code = raw.get("error_code")
+    error_code: ErrorCode = cast("ErrorCode", code) if code in _ERROR_CODE_SET else "internal"
+    raw_message = raw.get("message")
+    message = (
+        sanitize_message(raw_message)
+        if isinstance(raw_message, str) and raw_message
+        else _SAFE_ERROR_MESSAGE[error_code]
+    )
+    retryable = raw.get("retryable")
+    if not isinstance(retryable, bool):
+        retryable = error_code in ("upstream_unavailable", "rate_limited")
+    recovery = raw.get("recovery_action")
+    if not isinstance(recovery, str) or not recovery:
+        recovery = _GENERIC_RECOVERY_ACTION[error_code]
+
+    envelope: dict[str, Any] = {
+        "success": False,
+        "error_code": error_code,
+        "message": message,
+        "retryable": retryable,
+        "recovery_action": recovery,
+    }
+    field_errors = raw.get("field_errors")
+    if isinstance(field_errors, list):
+        cleaned = [sanitize_message(str(n))[:64] for n in field_errors if str(n)]
+        if cleaned:
+            envelope["field_errors"] = cleaned
+            envelope["field"] = cleaned[0]
+    elif isinstance(raw.get("field"), str) and raw["field"]:
+        envelope["field"] = sanitize_message(raw["field"])[:64]
     envelope["_meta"] = _augment_meta(
         {}, tool_name=tool_name, request_id=request_id, elapsed_ms=elapsed_ms
     )
@@ -304,7 +386,7 @@ def classify_status(status_code: int) -> tuple[ErrorCode, bool]:
         return _STATUS_CODE_MAP[status_code]
     if status_code >= 500:
         return "upstream_unavailable", True
-    return "internal_error", False
+    return "internal", False
 
 
 def reshape_output_schema(

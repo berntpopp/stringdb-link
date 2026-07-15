@@ -5,6 +5,87 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] - 2026-07-15
+
+GeneFoundry fleet MCP contract-hardening sweep. Vendors the behaviour gate
+(`docs/conformance/behaviour.py`, byte-identical from `genefoundry-router@791363c`)
+and closes every contract defect it — and the live MCP audit (#33) — surfaced.
+Behaviour gate: 20 fail / 10 UNGATED → **0 fail / 0 UNGATED (CONFORMANT)**.
+Surface: 4,625t → **4,083t**, `outputSchema` 24% → **0%**, `doc%` 100%, 0 → 26 examples.
+
+### Fixed
+
+- **`isError` is now set on every error envelope — for BOTH the raised and the
+  returned-dict paths.** The MCP error carrier returned `ToolResult(structured_content=...)`
+  without `is_error=True`, so a client branching on the protocol `isError` bit saw every
+  failed call as a success. Verified against fastmcp 3.4.4 that the return path keeps
+  `structuredContent` while carrying `is_error=True`; errors now route through
+  `ToolResult(..., is_error=True)`. A payload a tool *returns* as `{"success": false}`
+  (rather than raising) is likewise normalized to an error frame with `isError:true`,
+  never re-wrapped as a success.
+- **`error_code` is closed to the six-value canonical enum** (`invalid_input`,
+  `not_found`, `ambiguous_query`, `upstream_unavailable`, `rate_limited`, `internal`):
+  `internal_error` → `internal`.
+- **Validation errors now name the offending parameter.** The error frame carries
+  `field`/`field_errors`, derived ONLY from the request-validation `loc` path (this
+  server's own schema parameter names, never caller/upstream prose), so an LLM can
+  self-correct.
+- **`get_network_link`: `output_format` no longer silently returns an empty result.**
+  8 of its 9 declared enum values returned `{"success": true, "result": {}}`. The four
+  formats STRING actually serves for a link (`json`, `tsv`, `tsv-no-header`, `xml`) are
+  kept and each is shaped into a structured result — `json` fills `url`; the text
+  formats fill `formatted` (STRING's raw serialization) with the URL also extracted
+  into `url`. STRING's `psi-mi`/`image`/`svg` link formats (which carry no link
+  payload) are dropped from the enum. (Silent-empty filter, without capability loss.)
+- **`compute_functional_enrichment` / `compute_ppi_enrichment`: ANY STRING in-band
+  error is now `invalid_input` naming a field, not a false `upstream_unavailable`.**
+  STRING returns HTTP 200 with `[{"error": "...", ...}]` for a bad request; this was
+  mis-mapped to a retryable "upstream unavailable". The general class is now handled —
+  `background_error` names `background_string_identifiers`, and any other in-band error
+  names `identifiers` — as a non-retryable `invalid_input` (upstream prose never
+  echoed), so a new STRING error type can never regress to a field-less error or a
+  false retryable outage.
+- **`get_functional_annotations` works again.** Sending `allow_pubmed`/`only_pubmed`
+  (even `=0`) made STRING attach PMID annotations and balloon the response past the
+  byte cap, so the tool always failed. The flags are now sent only when opted in.
+- **`get_network_image` returns an image again — on the MCP surface only.** STRING's
+  binary body cannot ride inside a structured MCP envelope, so the tool returned an
+  internal error or an empty result. The MCP tool now returns a base64-encoded
+  `NetworkImageResult` (format, content-type, size, `image_base64`) via a dedicated
+  `POST /api/images/network/json` route; the REST `POST /api/images/network` endpoint
+  keeps its raw-binary contract (renamed operation `download_network_image`, excluded
+  from MCP). An empty upstream image body is now a `upstream_unavailable` error, never
+  a `success` with zero bytes.
+- **`get_interaction_partners` reports an honest, limit-invariant `total_count` and
+  paginates PER PROTEIN.** It reported `total_count = len(returned page)` and
+  head-sliced the flattened partner list — which for a multi-protein query returned
+  only the first protein's partners and omitted every later protein. It now fetches the
+  full partner set (so the total is the true count, invariant of `limit`), applies
+  `limit` per query protein so every queried protein is represented, and sets
+  `truncated`.
+
+### Added
+
+- **`compute_functional_enrichment` gains `limit` and `category`.** An unfiltered
+  30-gene panel returned ~992 terms (~421k tokens). `limit` (1–1000, default 100)
+  returns the most-significant terms first; `category` (a closed `EnrichmentCategory`
+  enum) filters to one STRING category. `total_count` still reports the full number of
+  matching terms and `truncated` signals more exist, so a smaller `limit` never hides
+  how many there are.
+- **Tool-Schema Documentation Standard v1**: every required and array parameter now
+  carries `examples`; closed vocabularies are declared as enums matching the runtime.
+- Vendored behaviour gate (`tests/conformance/behaviour.py`,
+  `tests/conformance/test_behaviour_v1.py`) wired into `mcp-conformance` CI alongside
+  the transport probe.
+
+### Changed
+
+- **Tool-Surface Budget Standard v1**: `outputSchema` is suppressed on every tool
+  (optional in MCP, unread by models, 24% of the surface) and
+  `FastMCP(dereference_schemas=False)`. `structuredContent` is unaffected (every tool
+  returns a dict envelope) and untrusted-text fencing still happens on the wire
+  (Response-Envelope Standard v1.1a).
+
 ## [4.0.6] - 2026-07-14
 
 ### Changed

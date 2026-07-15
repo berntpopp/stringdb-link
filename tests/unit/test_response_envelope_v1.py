@@ -17,6 +17,7 @@ contract only. See docs/RESPONSE-ENVELOPE-STANDARD-v1.md for the normative frame
 
 from __future__ import annotations
 
+import base64
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -133,6 +134,9 @@ async def test_upstream_failure_is_flat_retryable_error_envelope(facade: Any) ->
 
     body = result.structured_content
     assert body is not None, "errors must carry structured_content, not only content[].text"
+    # The wire-level MCP isError bit MUST be set so a client branching on isError
+    # sees the failure (Response-Envelope Standard v1).
+    assert result.is_error is True
     assert body["success"] is False
     assert body["error_code"] == "upstream_unavailable"
     assert body["retryable"] is True
@@ -163,21 +167,23 @@ async def test_internal_failure_is_non_retryable_internal_error(facade: Any) -> 
 
     body = result.structured_content
     assert body is not None
+    assert result.is_error is True
     assert body["success"] is False
-    assert body["error_code"] == "internal_error"
+    assert body["error_code"] == "internal"
     assert body["retryable"] is False
     assert body["recovery_action"]
     assert body["_meta"]["unsafe_for_clinical_use"] is True
 
 
 @pytest.mark.asyncio
-async def test_binary_image_tool_degrades_to_structured_internal_error(facade: Any) -> None:
-    """The image tool's binary body defeats the JSON MCP provider (no HTTP
-    response in the chain); the wrapper degrades it to a flat, non-retryable
-    internal_error envelope with the disclaimer — never an opaque ToolError."""
+async def test_image_tool_returns_base64_success_envelope(facade: Any) -> None:
+    """The image tool base64-encodes STRING's binary body into a structured
+    success envelope (JSON-safe), so the tool returns a non-empty, decodable
+    result instead of degrading to internal_error or an empty payload."""
+    raw = b"\x89PNG\r\n\x1a\n"
     image = NetworkImageResponse(
         image=NetworkImage(
-            image_data=b"\x89PNG\r\n\x1a\n",
+            image_data=raw,
             image_format="image",
             content_type="image/png",
         )
@@ -196,11 +202,40 @@ async def test_binary_image_tool_degrades_to_structured_internal_error(facade: A
 
     body = result.structured_content
     assert body is not None
-    assert body["success"] is False
-    assert body["error_code"] == "internal_error"
-    assert body["retryable"] is False
+    assert result.is_error is False
+    assert body["success"] is True
+    payload = body["result"]
+    assert payload["content_type"] == "image/png"
+    assert payload["image_size_bytes"] == len(raw)
+    assert base64.b64decode(payload["image_base64"]) == raw
     assert body["_meta"]["tool"] == "get_network_image"
     assert body["_meta"]["unsafe_for_clinical_use"] is True
+
+
+@pytest.mark.asyncio
+async def test_empty_image_body_is_error_not_success(facade: Any) -> None:
+    """An empty upstream image body must surface as an error, never success with
+    0 bytes and an empty base64 string (that would be a silent-empty success)."""
+    image = NetworkImageResponse(
+        image=NetworkImage(image_data=b"", image_format="image", content_type="image/png")
+    )
+    with patch(
+        "stringdb_link.services.stringdb_service.StringDBService.get_network_image",
+        new_callable=AsyncMock,
+        return_value=image,
+    ):
+        async with Client(facade) as client:
+            result = await client.call_tool(
+                "get_network_image",
+                {"identifiers": ["nup100"], "species": 4932},
+                raise_on_error=False,
+            )
+
+    body = result.structured_content
+    assert body is not None
+    assert result.is_error is True
+    assert body["success"] is False
+    assert body["error_code"] == "upstream_unavailable"
 
 
 @pytest.mark.asyncio
@@ -252,7 +287,7 @@ def test_build_error_envelope_500_is_non_retryable_internal() -> None:
         request_id="r3",
         elapsed_ms=1.0,
     )
-    assert env["error_code"] == "internal_error"
+    assert env["error_code"] == "internal"
     assert env["retryable"] is False
 
 

@@ -151,6 +151,11 @@ def create_mcp_app() -> FastMCP:
         # ergonomics, and redundant with the JSON tools.
         RouteMap(pattern=r"^/api/homology/scores/download$", mcp_type=MCPType.EXCLUDE),
         RouteMap(pattern=r"^/api/homology/best-hits/download$", mcp_type=MCPType.EXCLUDE),
+        # Exclude the binary image download: it returns raw bytes (image/png,
+        # image/svg+xml) that cannot ride inside a structured MCP envelope. The MCP
+        # surface uses /api/images/network/json (operation_id get_network_image),
+        # which base64-encodes the image into the envelope.
+        RouteMap(pattern=r"^/api/images/network$", mcp_type=MCPType.EXCLUDE),
     ]
 
     # Create FastMCP instance. mask_error_details=True keeps internal exception
@@ -172,6 +177,10 @@ def create_mcp_app() -> FastMCP:
         route_maps=mcp_route_maps,
         mask_error_details=True,
         mcp_component_fn=wrap_structured_error_tools,
+        # Tool-Surface Budget Standard v1 Rule 4: do not inline $defs/$ref at every
+        # use site. Free and safe (0 input schemas carry a $ref); trims the surface
+        # a warm client re-sends on every request.
+        dereference_schemas=False,
     )
 
     # FastMCP-core not-found reflection guard (Response-Envelope v1.1 fast-follow):

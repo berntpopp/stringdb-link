@@ -419,7 +419,7 @@ class StringDBClient:
         self,
         identifiers: list[str],
         species: int | None = None,
-        limit: int = 10,
+        limit: int | None = 10,
         required_score: int = 400,
         network_type: str = "functional",
         output_format: OutputFormat = OutputFormat.JSON,
@@ -429,7 +429,9 @@ class StringDBClient:
         Args:
             identifiers: List of protein identifiers
             species: NCBI taxon ID
-            limit: Maximum number of partners per protein
+            limit: Maximum number of partners PER PROTEIN. ``None`` omits the
+                parameter so STRING returns the full partner set (used to compute a
+                true, limit-invariant total before applying a per-protein cap).
             required_score: Minimum confidence score on STRING's 0-1000 integer scale (e.g. 400 = 0.4)
             network_type: Network type (functional or physical)
             output_format: Output format (json, tsv, xml, psi-mi)
@@ -437,13 +439,14 @@ class StringDBClient:
         Returns:
             List of interaction partners (JSON) or formatted string (TSV/XML/PSI-MI)
         """
-        params = {
+        params: dict[str, Any] = {
             "identifiers": "\r".join(identifiers),
-            "limit": limit,
             "required_score": required_score,
             "network_type": network_type,
             "caller_identity": self.caller_identity,
         }
+        if limit is not None:
+            params["limit"] = limit
 
         if species:
             params["species"] = species
@@ -506,12 +509,18 @@ class StringDBClient:
         Returns:
             List of functional annotations (JSON) or formatted string (TSV/XML/PSI-MI)
         """
-        params = {
+        params: dict[str, Any] = {
             "identifiers": "\r".join(identifiers),
-            "allow_pubmed": 1 if allow_pubmed else 0,
-            "only_pubmed": 1 if only_pubmed else 0,
             "caller_identity": self.caller_identity,
         }
+        # STRING treats the mere PRESENCE of these flags (even "=0") as a request to
+        # include PMID publication annotations, which balloons the response to tens
+        # of MB and trips the response byte cap (ResponseTooLargeError). Send them
+        # ONLY when a caller explicitly opts in.
+        if allow_pubmed:
+            params["allow_pubmed"] = 1
+        if only_pubmed:
+            params["only_pubmed"] = 1
 
         if species:
             params["species"] = species

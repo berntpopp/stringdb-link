@@ -6,13 +6,9 @@ networks and interaction partners.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import PlainTextResponse
-
-if TYPE_CHECKING:
-    from fastapi import Response
 
 from stringdb_link.exceptions import StringDBServiceError, ValidationError
 from stringdb_link.models.requests import InteractionPartnersRequest, LinkRequest, NetworkRequest
@@ -21,7 +17,7 @@ from stringdb_link.models.responses import (
     LinkInfo,
     NetworkInteractionListResponse,
 )
-from stringdb_link.models.stringdb import NetworkType, OutputFormat
+from stringdb_link.models.stringdb import NetworkType
 
 from .dependencies import LoggerDep, StringDBServiceDep
 
@@ -152,20 +148,19 @@ async def get_interaction_partners(
             network_type=request.network_type,
         )
 
-        # Call StringDB service
+        # The service already builds the response with an honest, limit-invariant
+        # total_count and the truncated flag; return it directly rather than
+        # rebuilding it with total_count=len(partners) (which tracked the page size).
         partners_response = await service.get_interaction_partners(request)
-        partners = partners_response.partners
 
         logger.info(
             "Successfully retrieved interaction partners",
             input_count=len(request.identifiers),
-            partner_count=len(partners),
+            partner_count=len(partners_response.partners),
+            total_count=partners_response.total_count,
         )
 
-        return InteractionPartnerListResponse(
-            partners=partners,
-            total_count=len(partners),
-        )
+        return partners_response
 
     except StringDBServiceError as e:
         logger.exception(
@@ -328,11 +323,18 @@ async def get_network_link(
     request: LinkRequest,
     service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
-    output_format: OutputFormat = Query(
-        OutputFormat.JSON,
-        description="Output format for the response",
+    output_format: Literal["json", "tsv", "tsv-no-header", "xml"] = Query(
+        "json",
+        description=(
+            "STRING serialization of the shareable link. All four formats convey the "
+            "same URL: 'json' returns it structured in 'url'; 'tsv', 'tsv-no-header' "
+            "and 'xml' return STRING's text in 'formatted' with the URL also extracted "
+            "into 'url'. (STRING's psi-mi/image/svg link formats are not offered — they "
+            "carry no link payload.)"
+        ),
+        examples=["json"],
     ),
-) -> LinkInfo | Response:
+) -> LinkInfo:
     """Get shareable link to STRING webpage for the network.
 
     This endpoint generates a shareable URL that leads to the STRING database
@@ -351,15 +353,11 @@ async def get_network_link(
             species=request.species,
         )
 
-        link_info = await service.get_network_link(request)
-
-        if output_format == OutputFormat.JSON:
-            return link_info
-        # Return raw text for non-JSON formats
-        return PlainTextResponse(
-            content=link_info.url,
-            media_type="text/plain",
-        )
+        # Every format is shaped into the structured LinkInfo envelope: json fills
+        # ``url``; tsv/tsv-no-header/xml fill ``formatted`` (STRING's raw text) with
+        # the URL also extracted into ``url``. The former plain-text branch produced
+        # an empty MCP structured result (silent-empty) and has been removed.
+        return await service.get_network_link(request, output_format=output_format)
 
     except StringDBServiceError as e:
         # Log the error type only. The raw identifiers and str(e) can embed the

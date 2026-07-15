@@ -7,12 +7,13 @@ caching, and data transformations.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import ValidationError as PydanticValidationError
 
 from stringdb_link.config import settings
-from stringdb_link.exceptions import StringDBServiceError
+from stringdb_link.exceptions import StringDBServiceError, ValidationError
 from stringdb_link.logging_config import get_logger
 from stringdb_link.models.responses import (
     EnrichmentTerm,
@@ -46,6 +47,98 @@ if TYPE_CHECKING:
         PPIEnrichmentRequest,
     )
     from stringdb_link.models.responses import LinkInfo, PPIEnrichmentResult
+
+
+#: Field named in the invalid_input envelope when STRING reports an in-band error
+#: about the caller-supplied background proteome.
+_BACKGROUND_FIELD = "background_string_identifiers"
+#: Default offending field for any OTHER STRING in-band error: the query proteins are
+#: what STRING validates (unknown/misspelled identifiers, unsupported species, etc.).
+_DEFAULT_INPUT_FIELD = "identifiers"
+#: Fixed, server-authored messages. The upstream STRING error prose is NEVER echoed
+#: (it is caller-influenceable); only these constants and the offending field name
+#: reach the caller (security posture).
+_BACKGROUND_ERROR_MESSAGE = (
+    "The custom background proteome is invalid: it must be a superset of the query "
+    "identifiers. Adjust 'background_string_identifiers' so it contains every query "
+    "protein, or omit it to use the whole-genome background."
+)
+_GENERIC_INPUT_MESSAGE = (
+    "The upstream STRING API rejected the request as invalid; check the query "
+    "'identifiers' (and 'species'). This is not a transient outage — retrying "
+    "unchanged will fail identically."
+)
+
+#: STRING in-band error type -> the offending input field it names. Any type not
+#: listed falls back to ``_DEFAULT_INPUT_FIELD`` — the general class is handled, not
+#: just the one known case (a new STRING error type still yields invalid_input with a
+#: named field, never a false retryable upstream_unavailable or a field-less error).
+_STRING_ERROR_FIELD: dict[str, str] = {
+    "background_error": _BACKGROUND_FIELD,
+}
+
+
+def _raise_if_string_error(payload: object) -> None:
+    """Map STRING's in-band error shape onto a client-side ``invalid_input``.
+
+    STRING returns HTTP 200 with a body like ``[{"error": "background_error",
+    "message": "..."}]`` for a bad request. Left unhandled, building a typed model
+    from that body raises a validation error that the service mis-maps to
+    ``upstream_unavailable`` (retryable) — a false "the upstream is down, retry
+    forever". Detect the shape here for the GENERAL class (any ``{"error": ...}``
+    item) and raise ``ValidationError`` (400 → invalid_input, non-retryable) naming
+    the offending parameter, without echoing the upstream prose.
+    """
+    item: dict[str, object] | None = None
+    if isinstance(payload, list) and payload and isinstance(payload[0], dict):
+        item = payload[0]
+    elif isinstance(payload, dict):
+        item = payload
+    if item is None or not item.get("error"):
+        return
+    error_type = str(item.get("error"))
+    if error_type == "background_error":
+        raise ValidationError(_BACKGROUND_ERROR_MESSAGE, field=_BACKGROUND_FIELD)
+    field = _STRING_ERROR_FIELD.get(error_type, _DEFAULT_INPUT_FIELD)
+    raise ValidationError(_GENERIC_INPUT_MESSAGE, field=field)
+
+
+def _extract_url(raw: str) -> str:
+    """Pull the shareable URL out of STRING's tsv/tsv-no-header/xml link response.
+
+    get_link conveys the same URL in every format (``url\\n<url>`` for tsv, the bare
+    line for tsv-no-header, ``<url>...</url>`` for xml). Match the first ``http(s)``
+    token; fall back to the stripped body so the structured ``url`` is never empty.
+    """
+    # Exclude whitespace and markup delimiters so the trailing ``</url>`` in the xml
+    # form (``<url>https://...</url>``) is not swallowed into the URL.
+    match = re.search(r"https?://[^\s<>\"']+", raw)
+    if match:
+        return match.group(0)
+    return raw.strip()
+
+
+def _limit_partners_per_protein(
+    partners: list[InteractionPartner], limit: int
+) -> list[InteractionPartner]:
+    """Return at most ``limit`` partners PER QUERY PROTEIN, preserving order.
+
+    STRING's ``limit`` is per-protein and its rows arrive grouped by the query
+    protein (``string_id_a`` / ``stringId_A``), most-confident first. Grouping here
+    — rather than a global ``partners[:limit]`` — guarantees every queried protein is
+    represented: a global head-slice returns only the first protein's partners once
+    it has ``limit`` of them and silently omits every later protein.
+    """
+    counts: dict[str, int] = {}
+    kept: list[InteractionPartner] = []
+    for partner in partners:
+        query_id = partner.string_id_a
+        seen = counts.get(query_id, 0)
+        if seen >= limit:
+            continue
+        counts[query_id] = seen + 1
+        kept.append(partner)
+    return kept
 
 
 class StringDBService:
@@ -237,23 +330,32 @@ class StringDBService:
                 network_type=request.network_type,
             )
 
-            partners = await self._cached_get_interaction_partners(
+            # STRING's ``limit`` is PER PROTEIN. Fetch the FULL partner set (no upstream
+            # limit) so ``total_count`` is the true count, invariant of the caller's
+            # ``limit``; then apply ``limit`` PER QUERY PROTEIN so every queried protein
+            # is represented (a global head-slice would return only the first protein's
+            # partners and omit every later protein entirely).
+            all_partners = await self._cached_get_interaction_partners(
                 identifiers=tuple(request.identifiers),
                 species=request.species,
-                limit=request.limit,
+                limit=None,
                 required_score=round(request.required_score * 1000),
                 network_type=request.network_type.value,
             )
+            limited = _limit_partners_per_protein(all_partners, request.limit)
+            total = len(all_partners)
 
             self.logger.info(
                 "Successfully retrieved interaction partners",
                 input_count=len(request.identifiers),
-                partner_count=len(partners),
+                partner_count=len(limited),
+                total_count=total,
             )
 
             return InteractionPartnerListResponse(
-                partners=partners,
-                total_count=len(partners),
+                partners=limited,
+                total_count=total,
+                truncated=total > len(limited),
             )
 
         except Exception as e:
@@ -274,7 +376,7 @@ class StringDBService:
         self,
         identifiers: tuple[str, ...],
         species: int | None,
-        limit: int,
+        limit: int | None,
         required_score: int,
         network_type: str,
     ) -> list[InteractionPartner]:
@@ -320,17 +422,33 @@ class StringDBService:
                 ),
             )
 
+            # Optional category filter (closed vocabulary) and top-N truncation.
+            # ``total_count`` reports the FULL number of matching terms so a smaller
+            # ``limit`` never hides how many exist (honest total, invariant of limit).
+            if request.category is not None:
+                category_value = request.category.value
+                terms = [term for term in terms if term.category == category_value]
+            terms = sorted(terms, key=lambda term: term.fdr)
+            total = len(terms)
+            limited = terms[: request.limit]
+
             self.logger.info(
                 "Successfully retrieved functional enrichment",
                 input_count=len(request.identifiers),
-                term_count=len(terms),
+                term_count=len(limited),
+                total_count=total,
             )
 
             return EnrichmentTermListResponse(
-                terms=terms,
-                total_count=len(terms),
+                terms=limited,
+                total_count=total,
+                truncated=total > len(limited),
             )
 
+        except ValidationError:
+            # STRING in-band error (e.g. background_error) already classified as
+            # invalid_input — propagate unwrapped so it is not re-mapped to 5xx.
+            raise
         except Exception as e:
             self.logger.exception(
                 "Error getting functional enrichment",
@@ -360,6 +478,10 @@ class StringDBService:
                 list(background_string_identifiers) if background_string_identifiers else None
             ),
         )
+        # Detect STRING's in-band error body (HTTP 200 + [{"error": ...}]) before
+        # attempting to build typed models from it (defect: was mis-mapped to
+        # upstream_unavailable/retryable).
+        _raise_if_string_error(raw_terms)
         records = raw_terms if isinstance(raw_terms, list) else []
         return [EnrichmentTerm(**term) for term in records]
 
@@ -683,6 +805,10 @@ class StringDBService:
                 background_string_identifiers=request.background_string_identifiers,
             )
 
+            # Same STRING in-band error shape as functional enrichment: a bad
+            # background returns {"error": "background_error", ...} at HTTP 200.
+            _raise_if_string_error(raw_result)
+
             from stringdb_link.models.responses import PPIEnrichmentResult
 
             result = PPIEnrichmentResult(**cast("dict[str, Any]", raw_result))
@@ -695,6 +821,8 @@ class StringDBService:
 
             return result
 
+        except ValidationError:
+            raise
         except Exception as e:
             self.logger.exception(
                 "Error getting PPI enrichment",
@@ -705,14 +833,18 @@ class StringDBService:
             msg = f"Failed to get PPI enrichment: {e}"
             raise StringDBServiceError(msg) from e
 
-    async def get_network_link(self, request: LinkRequest) -> LinkInfo:
+    async def get_network_link(self, request: LinkRequest, output_format: str = "json") -> LinkInfo:
         """Get shareable link to STRING webpage for the network.
 
         Args:
             request: Link generation request
+            output_format: STRING serialization to render (json/tsv/tsv-no-header/xml).
+                Every format conveys the same shareable URL; for non-json formats the
+                raw STRING text is returned in ``LinkInfo.formatted`` and the URL is
+                extracted into ``LinkInfo.url`` so the MCP result is never empty.
 
         Returns:
-            Link information with URL
+            Link information with URL (and, for non-json, the formatted serialization)
 
         Raises:
             StringDBServiceError: If the operation fails
@@ -731,26 +863,30 @@ class StringDBService:
                 "network_flavor": request.network_flavor.value,
             }
 
-            from stringdb_link.models.stringdb import OutputFormat
-
+            fmt = OutputFormat(output_format)
             result = await self.client.get_link(
                 identifiers=request.identifiers,
                 species=request.species,
-                output_format=OutputFormat.JSON,
+                output_format=fmt,
                 **link_params,
             )
 
-            # Extract URL from result
-            url = result.get("url", str(result)) if isinstance(result, dict) else str(result)
-
             from stringdb_link.models.responses import LinkInfo
 
-            link_info = LinkInfo(url=url)
+            if fmt == OutputFormat.JSON:
+                # client.get_link already unwrapped STRING's ["<url>"] to the url string
+                # (or a {"url": ...} dict for defensive parity).
+                url = result.get("url", str(result)) if isinstance(result, dict) else str(result)
+                link_info = LinkInfo(url=url, output_format=fmt.value, formatted=None)
+            else:
+                raw = str(result)
+                link_info = LinkInfo(url=_extract_url(raw), output_format=fmt.value, formatted=raw)
 
             # Count/status only — never the raw identifiers or generated URL (PII).
             self.logger.info(
                 "Successfully generated network link",
                 identifier_count=len(request.identifiers),
+                output_format=fmt.value,
             )
 
             return link_info
