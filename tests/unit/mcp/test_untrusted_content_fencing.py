@@ -201,50 +201,18 @@ _FENCED_POINTERS = {
 }
 
 
-def _resolve_ref(node: dict[str, Any], root: dict[str, Any]) -> dict[str, Any]:
-    """Follow a local ``#/$defs/...`` ``$ref`` (FastMCP may inline or keep it)."""
-    ref = node.get("$ref")
-    if isinstance(ref, str) and ref.startswith("#/$defs/"):
-        return root.get("$defs", {})[ref.split("/")[-1]]
-    return node
-
-
 @pytest.mark.asyncio
-async def test_list_tools_declares_untrusted_text_object_at_fenced_pointers(
-    facade: Any,
-) -> None:
-    """The LIVE tool schema (list_tools) must advertise the fenced pointer as the
-    typed untrusted_text object (``kind`` const), never as a bare string.
+async def test_fenced_tools_suppress_output_schema(facade: Any) -> None:
+    """outputSchema is SUPPRESSED on every fenced tool (Tool-Surface Budget
+    Standard v1 Rule 3) — no model reads it and it is pure per-request surface.
 
-    Regression guard for the schema-declaration bug: embedding UntrustedText only
-    as an unreferenced ``$defs`` entry let list_tools keep advertising
-    ``annotation``/``description`` as ``type: string``.
+    Response-Envelope Standard v1.1a: the schema need declare ``untrusted_text``
+    only IF a schema is published; the load-bearing requirement is that the fenced
+    object appears ON THE WIRE, which the ``*_is_fenced`` tests above prove for
+    every pointer in ``_FENCED_POINTERS``.
     """
     async with Client(facade) as client:
         tools = {t.name: t for t in await client.list_tools()}
 
-    for tool_name, field in _FENCED_POINTERS.items():
-        schema = tools[tool_name].outputSchema
-        assert schema is not None, tool_name
-        results = schema["properties"]["results"]
-        assert results["type"] == "array", tool_name
-        item = _resolve_ref(results["items"], schema)
-        field_schema = _resolve_ref(item["properties"][field], schema)
-
-        # It is the untrusted_text object, NOT a bare string.
-        assert field_schema.get("type") == "object", (tool_name, field, field_schema)
-        assert field_schema.get("type") != "string", (tool_name, field)
-        props = field_schema["properties"]
-        assert set(props) >= {"kind", "text", "provenance", "raw_sha256"}, (tool_name, field)
-
-        kind = props["kind"]
-        assert kind.get("const") == "untrusted_text" or kind.get("enum") == ["untrusted_text"], (
-            tool_name,
-            kind,
-        )
-
-        provenance = _resolve_ref(props["provenance"], schema)
-        assert set(provenance["properties"]) >= {"source", "record_id", "retrieved_at"}, (
-            tool_name,
-            field,
-        )
+    for tool_name in _FENCED_POINTERS:
+        assert tools[tool_name].outputSchema is None, tool_name

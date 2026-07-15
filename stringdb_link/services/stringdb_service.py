@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, cast
 from pydantic import ValidationError as PydanticValidationError
 
 from stringdb_link.config import settings
-from stringdb_link.exceptions import StringDBServiceError
+from stringdb_link.exceptions import StringDBServiceError, ValidationError
 from stringdb_link.logging_config import get_logger
 from stringdb_link.models.responses import (
     EnrichmentTerm,
@@ -46,6 +46,48 @@ if TYPE_CHECKING:
         PPIEnrichmentRequest,
     )
     from stringdb_link.models.responses import LinkInfo, PPIEnrichmentResult
+
+
+#: STRING's ``interaction_partners`` endpoint caps returned partners per protein at
+#: 500. We always request this fixed page so ``total_count`` is a property of the
+#: result set (invariant of the caller's ``limit``) and truncate client-side.
+_PARTNER_UPSTREAM_LIMIT = 500
+
+#: Field named in the invalid_input envelope when STRING reports an in-band error
+#: about the caller-supplied background proteome.
+_BACKGROUND_FIELD = "background_string_identifiers"
+#: Fixed, server-authored message. The upstream STRING error prose is NEVER echoed
+#: (it is caller-influenceable); only this constant and the offending field name
+#: reach the caller (security posture).
+_BACKGROUND_ERROR_MESSAGE = (
+    "The custom background proteome is invalid: it must be a superset of the query "
+    "identifiers. Adjust 'background_string_identifiers' so it contains every query "
+    "protein, or omit it to use the whole-genome background."
+)
+_GENERIC_INPUT_MESSAGE = "The request was rejected by the upstream STRING API as invalid."
+
+
+def _raise_if_string_error(payload: object) -> None:
+    """Map STRING's in-band error shape onto a client-side ``invalid_input``.
+
+    STRING returns HTTP 200 with a body like ``[{"error": "background_error",
+    "message": "..."}]`` for a bad request (e.g. a background that is not a
+    superset of the query). Left unhandled, building a typed model from that body
+    raises a validation error that the service mis-maps to ``upstream_unavailable``
+    (retryable) — a false "the upstream is down, retry forever". Detect the shape
+    here and raise ``ValidationError`` (400 → invalid_input, non-retryable) naming
+    the offending parameter, without echoing the upstream prose.
+    """
+    item: dict[str, object] | None = None
+    if isinstance(payload, list) and payload and isinstance(payload[0], dict):
+        item = payload[0]
+    elif isinstance(payload, dict):
+        item = payload
+    if item is None or not item.get("error"):
+        return
+    if item.get("error") == "background_error":
+        raise ValidationError(_BACKGROUND_ERROR_MESSAGE, field=_BACKGROUND_FIELD)
+    raise ValidationError(_GENERIC_INPUT_MESSAGE)
 
 
 class StringDBService:
@@ -237,23 +279,31 @@ class StringDBService:
                 network_type=request.network_type,
             )
 
-            partners = await self._cached_get_interaction_partners(
+            # Fetch a fixed, limit-independent page from STRING (its per-protein cap
+            # is 500) and truncate client-side. This keeps ``total_count`` a property
+            # of the result set, invariant of the caller's ``limit`` (an honest total),
+            # and lets ``truncated`` signal that more partners exist.
+            all_partners = await self._cached_get_interaction_partners(
                 identifiers=tuple(request.identifiers),
                 species=request.species,
-                limit=request.limit,
+                limit=_PARTNER_UPSTREAM_LIMIT,
                 required_score=round(request.required_score * 1000),
                 network_type=request.network_type.value,
             )
+            total = len(all_partners)
+            limited = all_partners[: request.limit]
 
             self.logger.info(
                 "Successfully retrieved interaction partners",
                 input_count=len(request.identifiers),
-                partner_count=len(partners),
+                partner_count=len(limited),
+                total_count=total,
             )
 
             return InteractionPartnerListResponse(
-                partners=partners,
-                total_count=len(partners),
+                partners=limited,
+                total_count=total,
+                truncated=total > len(limited),
             )
 
         except Exception as e:
@@ -320,17 +370,33 @@ class StringDBService:
                 ),
             )
 
+            # Optional category filter (closed vocabulary) and top-N truncation.
+            # ``total_count`` reports the FULL number of matching terms so a smaller
+            # ``limit`` never hides how many exist (honest total, invariant of limit).
+            if request.category is not None:
+                category_value = request.category.value
+                terms = [term for term in terms if term.category == category_value]
+            terms = sorted(terms, key=lambda term: term.fdr)
+            total = len(terms)
+            limited = terms[: request.limit]
+
             self.logger.info(
                 "Successfully retrieved functional enrichment",
                 input_count=len(request.identifiers),
-                term_count=len(terms),
+                term_count=len(limited),
+                total_count=total,
             )
 
             return EnrichmentTermListResponse(
-                terms=terms,
-                total_count=len(terms),
+                terms=limited,
+                total_count=total,
+                truncated=total > len(limited),
             )
 
+        except ValidationError:
+            # STRING in-band error (e.g. background_error) already classified as
+            # invalid_input — propagate unwrapped so it is not re-mapped to 5xx.
+            raise
         except Exception as e:
             self.logger.exception(
                 "Error getting functional enrichment",
@@ -360,6 +426,10 @@ class StringDBService:
                 list(background_string_identifiers) if background_string_identifiers else None
             ),
         )
+        # Detect STRING's in-band error body (HTTP 200 + [{"error": ...}]) before
+        # attempting to build typed models from it (defect: was mis-mapped to
+        # upstream_unavailable/retryable).
+        _raise_if_string_error(raw_terms)
         records = raw_terms if isinstance(raw_terms, list) else []
         return [EnrichmentTerm(**term) for term in records]
 
@@ -683,6 +753,10 @@ class StringDBService:
                 background_string_identifiers=request.background_string_identifiers,
             )
 
+            # Same STRING in-band error shape as functional enrichment: a bad
+            # background returns {"error": "background_error", ...} at HTTP 200.
+            _raise_if_string_error(raw_result)
+
             from stringdb_link.models.responses import PPIEnrichmentResult
 
             result = PPIEnrichmentResult(**cast("dict[str, Any]", raw_result))
@@ -695,6 +769,8 @@ class StringDBService:
 
             return result
 
+        except ValidationError:
+            raise
         except Exception as e:
             self.logger.exception(
                 "Error getting PPI enrichment",

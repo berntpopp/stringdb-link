@@ -172,6 +172,10 @@ def create_mcp_app() -> FastMCP:
         route_maps=mcp_route_maps,
         mask_error_details=True,
         mcp_component_fn=wrap_structured_error_tools,
+        # Tool-Surface Budget Standard v1 Rule 4: do not inline $defs/$ref at every
+        # use site. Free and safe (0 input schemas carry a $ref); trims the surface
+        # a warm client re-sends on every request.
+        dereference_schemas=False,
     )
 
     # FastMCP-core not-found reflection guard (Response-Envelope v1.1 fast-follow):

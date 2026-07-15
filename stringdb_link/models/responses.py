@@ -540,6 +540,40 @@ class NetworkImageResponse(BaseResponse):
     )
 
 
+class NetworkImageResult(BaseResponse):
+    """JSON-safe network image payload for the MCP tool surface.
+
+    The raw STRING image is binary, which cannot be returned inside a structured
+    MCP envelope. This model carries the image as a base64 string plus its format
+    metadata so the tool returns a non-empty, decodable result.
+    """
+
+    image_format: str = Field(
+        ...,
+        description="Requested image format (image=PNG, highres_image=hi-res PNG, svg=SVG)",
+        json_schema_extra={"example": "image"},
+    )
+    content_type: str = Field(
+        ...,
+        description="MIME type of the encoded image",
+        json_schema_extra={"example": "image/png"},
+    )
+    image_size_bytes: int = Field(
+        ...,
+        ge=0,
+        description="Size in bytes of the decoded image",
+        json_schema_extra={"example": 20480},
+    )
+    image_base64: str = Field(
+        ...,
+        description=(
+            "Base64-encoded image bytes. Decode this string to obtain the PNG or "
+            "SVG file rendered by STRING for the requested network."
+        ),
+        json_schema_extra={"example": "iVBORw0KGgoAAAANSUhEUgAA..."},
+    )
+
+
 # Response wrappers for lists
 class StringIdMappingListResponse(BaseResponse):
     """Response wrapper for list of identifier mappings."""
@@ -579,7 +613,11 @@ class InteractionPartnerListResponse(BaseResponse):
     total_count: int = Field(
         ...,
         ge=0,
-        description="Total number of partners",
+        description="Total number of partners available (independent of the requested limit)",
+    )
+    truncated: bool = Field(
+        False,
+        description="True when more partners exist than were returned under the requested limit",
     )
 
 
@@ -588,12 +626,16 @@ class EnrichmentTermListResponse(BaseResponse):
 
     terms: list[EnrichmentTerm] = Field(
         ...,
-        description="List of enriched terms",
+        description="List of enriched terms (most significant first, capped at the requested limit)",
     )
     total_count: int = Field(
         ...,
         ge=0,
-        description="Total number of enriched terms",
+        description="Total number of enriched terms matching the query (independent of the limit)",
+    )
+    truncated: bool = Field(
+        False,
+        description="True when more enriched terms exist than were returned under the requested limit",
     )
 
 

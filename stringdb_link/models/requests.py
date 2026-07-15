@@ -39,13 +39,13 @@ class IdentifierRequest(BaseRequest):
         min_length=1,
         max_length=MAX_IDENTIFIERS_PER_REQUEST,
         description="List of protein identifiers to resolve",
-        json_schema_extra={"example": ["p53", "BRCA1", "cdk2", "Q99835"]},
+        examples=[["p53", "BRCA1", "cdk2", "Q99835"]],
     )
     species: int | None = Field(
         None,
         ge=1,
         description="NCBI taxon identifier (e.g., 9606 for human)",
-        json_schema_extra={"example": 9606},
+        examples=[9606],
     )
     echo_query: bool = Field(
         False,
@@ -84,13 +84,13 @@ class NetworkRequest(BaseRequest):
         min_length=1,
         max_length=MAX_IDENTIFIERS_PER_REQUEST,
         description="List of protein identifiers",
-        json_schema_extra={"example": ["TP53", "EGFR", "CDK2"]},
+        examples=[["TP53", "EGFR", "CDK2"]],
     )
     species: int | None = Field(
         None,
         ge=1,
         description="NCBI taxon identifier",
-        json_schema_extra={"example": 9606},
+        examples=[9606],
     )
     required_score: float = Field(
         ConfidenceScore.MEDIUM,
@@ -144,13 +144,13 @@ class InteractionPartnersRequest(BaseRequest):
         min_length=1,
         max_length=MAX_IDENTIFIERS_PER_REQUEST,
         description="List of protein identifiers",
-        json_schema_extra={"example": ["TP53", "CDK2"]},
+        examples=[["TP53", "CDK2"]],
     )
     species: int | None = Field(
         None,
         ge=1,
         description="NCBI taxon identifier",
-        json_schema_extra={"example": 9606},
+        examples=[9606],
     )
     limit: int = Field(
         10,
@@ -200,17 +200,43 @@ class EnrichmentRequest(BaseRequest):
         min_length=1,
         max_length=MAX_IDENTIFIERS_PER_REQUEST,
         description="List of protein identifiers",
-        json_schema_extra={"example": ["trpA", "trpB", "trpC", "trpE", "trpGD"]},
+        examples=[["trpA", "trpB", "trpC", "trpE", "trpGD"]],
     )
     species: int | None = Field(
         None,
         ge=1,
         description="NCBI taxon identifier",
-        json_schema_extra={"example": 511145},
+        examples=[511145],
+    )
+    category: EnrichmentCategory | None = Field(
+        None,
+        description=(
+            "Optional term-category filter. When set, only enrichment terms in "
+            "this STRING category are returned (e.g. 'KEGG' for pathways, "
+            "'Process' for GO biological process, 'DISEASES' for disease "
+            "associations). Omit to return terms across all categories."
+        ),
+        examples=["KEGG"],
+    )
+    limit: int = Field(
+        100,
+        ge=1,
+        le=1000,
+        description=(
+            "Maximum number of enrichment terms to return, taken as the most "
+            "significant (lowest FDR) first. 'total_count' still reports the full "
+            "number of matching terms, so a smaller limit never hides how many exist."
+        ),
+        examples=[25],
     )
     background_string_identifiers: list[str] | None = Field(
         None,
-        description="Background proteome STRING identifiers",
+        description=(
+            "Optional custom background proteome, given as STRING identifiers "
+            "(e.g. '9606.ENSP00000269305'). MUST be a superset of the query "
+            "identifiers; STRING rejects a background that omits any query protein."
+        ),
+        examples=[["9606.ENSP00000269305", "9606.ENSP00000350283"]],
     )
 
     @field_validator("identifiers")
@@ -264,13 +290,13 @@ class AnnotationRequest(BaseRequest):
         min_length=1,
         max_length=MAX_IDENTIFIERS_PER_REQUEST,
         description="List of protein identifiers",
-        json_schema_extra={"example": ["cdk1"]},
+        examples=[["cdk1"]],
     )
     species: int | None = Field(
         None,
         ge=1,
         description="NCBI taxon identifier",
-        json_schema_extra={"example": 9606},
+        examples=[9606],
     )
     allow_pubmed: bool = Field(
         False,
@@ -312,13 +338,13 @@ class ImageRequest(BaseRequest):
         min_length=1,
         max_length=MAX_IDENTIFIERS_PER_REQUEST,
         description="List of protein identifiers",
-        json_schema_extra={"example": ["nup100"]},
+        examples=[["nup100"]],
     )
     species: int | None = Field(
         None,
         ge=1,
         description="NCBI taxon identifier",
-        json_schema_extra={"example": 4932},
+        examples=[4932],
     )
     add_color_nodes: int = Field(
         0,
@@ -394,13 +420,13 @@ class HomologyRequest(BaseRequest):
         min_length=1,
         max_length=MAX_IDENTIFIERS_PER_REQUEST,
         description="List of protein identifiers",
-        json_schema_extra={"example": ["CDK1", "CDK2"]},
+        examples=[["CDK1", "CDK2"]],
     )
     species: int | None = Field(
         None,
         ge=1,
         description="NCBI taxon identifier",
-        json_schema_extra={"example": 9606},
+        examples=[9606],
     )
 
     @field_validator("identifiers")
@@ -434,18 +460,18 @@ class HomologyBestRequest(BaseRequest):
         min_length=1,
         max_length=MAX_IDENTIFIERS_PER_REQUEST,
         description="List of protein identifiers",
-        json_schema_extra={"example": ["CDK1"]},
+        examples=[["CDK1"]],
     )
     species: int | None = Field(
         None,
         ge=1,
         description="Source species NCBI taxon identifier",
-        json_schema_extra={"example": 9606},
+        examples=[9606],
     )
     species_b: list[int] | None = Field(
         None,
         description="Target species NCBI taxon identifiers",
-        json_schema_extra={"example": [10090]},
+        examples=[[10090]],
     )
 
     @field_validator("identifiers")
@@ -496,13 +522,13 @@ class PPIEnrichmentRequest(BaseRequest):
         min_length=2,  # Need at least 2 proteins for PPI enrichment
         max_length=MAX_IDENTIFIERS_PER_REQUEST,
         description="List of protein identifiers",
-        json_schema_extra={"example": ["trpA", "trpB", "trpC", "trpE", "trpGD"]},
+        examples=[["trpA", "trpB", "trpC", "trpE", "trpGD"]],
     )
     species: int | None = Field(
         None,
         ge=1,
         description="NCBI taxon identifier",
-        json_schema_extra={"example": 511145},
+        examples=[511145],
     )
     required_score: float = Field(
         ConfidenceScore.MEDIUM,
@@ -512,7 +538,12 @@ class PPIEnrichmentRequest(BaseRequest):
     )
     background_string_identifiers: list[str] | None = Field(
         None,
-        description="Background proteome STRING identifiers",
+        description=(
+            "Optional custom background proteome, given as STRING identifiers "
+            "(e.g. '9606.ENSP00000269305'). MUST be a superset of the query "
+            "identifiers; STRING rejects a background that omits any query protein."
+        ),
+        examples=[["9606.ENSP00000269305", "9606.ENSP00000350283"]],
     )
 
     @field_validator("identifiers")
@@ -566,13 +597,13 @@ class EnrichmentImageRequest(BaseRequest):
         min_length=1,
         max_length=MAX_IDENTIFIERS_PER_REQUEST,
         description="List of protein identifiers",
-        json_schema_extra={"example": ["ARRB1", "ARRB2", "EVC", "PTCH1", "SHH", "SMO"]},
+        examples=[["ARRB1", "ARRB2", "EVC", "PTCH1", "SHH", "SMO"]],
     )
     species: int = Field(
         ...,
         ge=1,
         description="NCBI taxon identifier (required for enrichment)",
-        json_schema_extra={"example": 9606},
+        examples=[9606],
     )
     category: EnrichmentCategory = Field(
         EnrichmentCategory.PROCESS,
@@ -636,13 +667,13 @@ class LinkRequest(BaseRequest):
         min_length=1,
         max_length=MAX_IDENTIFIERS_PER_REQUEST,
         description="List of protein identifiers",
-        json_schema_extra={"example": ["p53", "BRCA1", "MDM2"]},
+        examples=[["p53", "BRCA1", "MDM2"]],
     )
     species: int | None = Field(
         None,
         ge=1,
         description="NCBI taxon identifier",
-        json_schema_extra={"example": 9606},
+        examples=[9606],
     )
     required_score: float = Field(
         ConfidenceScore.MEDIUM,

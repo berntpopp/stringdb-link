@@ -506,12 +506,18 @@ class StringDBClient:
         Returns:
             List of functional annotations (JSON) or formatted string (TSV/XML/PSI-MI)
         """
-        params = {
+        params: dict[str, Any] = {
             "identifiers": "\r".join(identifiers),
-            "allow_pubmed": 1 if allow_pubmed else 0,
-            "only_pubmed": 1 if only_pubmed else 0,
             "caller_identity": self.caller_identity,
         }
+        # STRING treats the mere PRESENCE of these flags (even "=0") as a request to
+        # include PMID publication annotations, which balloons the response to tens
+        # of MB and trips the response byte cap (ResponseTooLargeError). Send them
+        # ONLY when a caller explicitly opts in.
+        if allow_pubmed:
+            params["allow_pubmed"] = 1
+        if only_pubmed:
+            params["only_pubmed"] = 1
 
         if species:
             params["species"] = species

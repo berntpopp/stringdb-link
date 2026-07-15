@@ -69,7 +69,9 @@ async def test_service_error_is_severed_to_fixed_message_in_both_mirrors(
         side_effect=StringDBServiceError(HOSTILE),
     ):
         async with Client(facade) as client:
-            result = await client.call_tool("resolve_protein_identifiers", {"identifiers": ["p53"]})
+            result = await client.call_tool(
+                "resolve_protein_identifiers", {"identifiers": ["p53"]}, raise_on_error=False
+            )
 
     structured = result.structured_content
     assert structured is not None
@@ -93,7 +95,9 @@ async def test_argument_validation_is_severed_to_fixed_message(facade: Any) -> N
     """An invalid argument value (hostile string where a list is required) yields a
     fixed ``invalid_input`` message — the argument value is never echoed."""
     async with Client(facade) as client:
-        result = await client.call_tool("resolve_protein_identifiers", {"identifiers": HOSTILE})
+        result = await client.call_tool(
+            "resolve_protein_identifiers", {"identifiers": HOSTILE}, raise_on_error=False
+        )
 
     structured = result.structured_content
     assert structured is not None
@@ -116,7 +120,9 @@ async def test_timeout_yields_clean_fixed_message(facade: Any) -> None:
         side_effect=httpx.TimeoutException("upstream boom‍"),
     ):
         async with Client(facade) as client:
-            result = await client.call_tool("resolve_protein_identifiers", {"identifiers": ["p53"]})
+            result = await client.call_tool(
+                "resolve_protein_identifiers", {"identifiers": ["p53"]}, raise_on_error=False
+            )
 
     structured = result.structured_content
     assert structured is not None

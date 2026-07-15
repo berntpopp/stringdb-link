@@ -79,10 +79,10 @@ def _validation_field_names(response: httpx.Response) -> list[str]:
         loc = item.get("loc") if isinstance(item, dict) else None
         if not isinstance(loc, list) or not loc:
             continue
-        if loc[0] in ("body", "query", "path") and len(loc) > 1:
-            leaf = loc[-1]
-        else:
-            leaf = loc[-1]
+        # The leaf of the loc path is the offending parameter name (FastAPI prefixes
+        # it with body/query/path). It is this server's own schema name — safe to
+        # surface, unlike the caller value or upstream prose.
+        leaf = loc[-1]
         if isinstance(leaf, str) and leaf not in names:
             names.append(leaf)
     return names
@@ -133,15 +133,16 @@ def wrap_structured_error_tools(route: Any, component: Any) -> None:
     # externally-evolving, open-world database — none mutate state.
     object.__setattr__(component, "annotations", READ_ONLY_OPEN_WORLD)
 
-    # Declare an envelope-shaped outputSchema so the low-level MCP SDK's
-    # per-call structuredContent validation accepts both the success and error
-    # frames (see envelope.reshape_output_schema). Passing the tool name lets
-    # it embed the UntrustedText schema for tools that fence a prose field.
-    object.__setattr__(
-        component,
-        "output_schema",
-        envelope.reshape_output_schema(component.output_schema, component.name),
-    )
+    # Tool-Surface Budget Standard v1 Rule 3: suppress outputSchema. It is optional
+    # in MCP, no model reads it, and it is pure per-request surface. Setting it to
+    # None also removes the low-level SDK's per-call structuredContent validation,
+    # so both the success and error frames pass freely. structuredContent is still
+    # emitted (every tool returns a dict envelope; verified fastmcp 3.4.4
+    # tools/base.py:357-361). Untrusted-text fencing is UNAFFECTED: it happens on
+    # the wire in build_success_envelope; Response-Envelope Standard v1.1a requires
+    # the fenced object on the wire and only requires a schema declaration IF a
+    # schema is published — which it no longer is.
+    object.__setattr__(component, "output_schema", None)
 
     original_run = component.run
     tool_name = component.name

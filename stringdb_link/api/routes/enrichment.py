@@ -64,10 +64,15 @@ async def get_functional_enrichment(
             field=e.field,
             value=e.value,
         )
-        raise HTTPException(
-            status_code=400,
-            detail=f"Validation error: {e.message}",
-        ) from e
+        # Emit the FastAPI validation-list shape when the offending parameter is
+        # known, so the error envelope can name it (e.g. background_string_identifiers)
+        # without echoing any upstream prose. The fixed "msg" is never surfaced.
+        detail: object = (
+            [{"loc": ["body", e.field], "msg": "invalid value"}]
+            if e.field
+            else f"Validation error: {e.message}"
+        )
+        raise HTTPException(status_code=400, detail=detail) from e
 
     except Exception as e:
         logger.exception(
@@ -115,10 +120,15 @@ async def get_ppi_enrichment(
             field=e.field,
             value=e.value,
         )
-        raise HTTPException(
-            status_code=400,
-            detail=f"Validation error: {e.message}",
-        ) from e
+        # Emit the FastAPI validation-list shape when the offending parameter is
+        # known, so the error envelope can name it (e.g. background_string_identifiers)
+        # without echoing any upstream prose. The fixed "msg" is never surfaced.
+        detail: object = (
+            [{"loc": ["body", e.field], "msg": "invalid value"}]
+            if e.field
+            else f"Validation error: {e.message}"
+        )
+        raise HTTPException(status_code=400, detail=detail) from e
 
     except Exception as e:
         logger.exception(

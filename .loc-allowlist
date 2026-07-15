@@ -7,7 +7,7 @@
 #
 # Decomposition backlog: docs/superpowers/specs/2026-05-25-modernize-python-stack-and-agent-workflow-design.md
 
-stringdb_link/api/client.py:796
-stringdb_link/services/stringdb_service.py:776
-stringdb_link/models/requests.py:682
-stringdb_link/models/responses.py:625
+stringdb_link/api/client.py:802
+stringdb_link/services/stringdb_service.py:851
+stringdb_link/models/requests.py:713
+stringdb_link/models/responses.py:667

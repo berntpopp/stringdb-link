@@ -17,6 +17,7 @@ contract only. See docs/RESPONSE-ENVELOPE-STANDARD-v1.md for the normative frame
 
 from __future__ import annotations
 
+import base64
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -175,13 +176,14 @@ async def test_internal_failure_is_non_retryable_internal_error(facade: Any) -> 
 
 
 @pytest.mark.asyncio
-async def test_binary_image_tool_degrades_to_structured_internal_error(facade: Any) -> None:
-    """The image tool's binary body defeats the JSON MCP provider (no HTTP
-    response in the chain); the wrapper degrades it to a flat, non-retryable
-    internal_error envelope with the disclaimer — never an opaque ToolError."""
+async def test_image_tool_returns_base64_success_envelope(facade: Any) -> None:
+    """The image tool base64-encodes STRING's binary body into a structured
+    success envelope (JSON-safe), so the tool returns a non-empty, decodable
+    result instead of degrading to internal_error or an empty payload."""
+    raw = b"\x89PNG\r\n\x1a\n"
     image = NetworkImageResponse(
         image=NetworkImage(
-            image_data=b"\x89PNG\r\n\x1a\n",
+            image_data=raw,
             image_format="image",
             content_type="image/png",
         )
@@ -200,9 +202,12 @@ async def test_binary_image_tool_degrades_to_structured_internal_error(facade: A
 
     body = result.structured_content
     assert body is not None
-    assert body["success"] is False
-    assert body["error_code"] == "internal"
-    assert body["retryable"] is False
+    assert result.is_error is False
+    assert body["success"] is True
+    payload = body["result"]
+    assert payload["content_type"] == "image/png"
+    assert payload["image_size_bytes"] == len(raw)
+    assert base64.b64decode(payload["image_base64"]) == raw
     assert body["_meta"]["tool"] == "get_network_image"
     assert body["_meta"]["unsafe_for_clinical_use"] is True
 
