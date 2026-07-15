@@ -133,6 +133,9 @@ async def test_upstream_failure_is_flat_retryable_error_envelope(facade: Any) ->
 
     body = result.structured_content
     assert body is not None, "errors must carry structured_content, not only content[].text"
+    # The wire-level MCP isError bit MUST be set so a client branching on isError
+    # sees the failure (Response-Envelope Standard v1).
+    assert result.is_error is True
     assert body["success"] is False
     assert body["error_code"] == "upstream_unavailable"
     assert body["retryable"] is True
@@ -163,8 +166,9 @@ async def test_internal_failure_is_non_retryable_internal_error(facade: Any) -> 
 
     body = result.structured_content
     assert body is not None
+    assert result.is_error is True
     assert body["success"] is False
-    assert body["error_code"] == "internal_error"
+    assert body["error_code"] == "internal"
     assert body["retryable"] is False
     assert body["recovery_action"]
     assert body["_meta"]["unsafe_for_clinical_use"] is True
@@ -197,7 +201,7 @@ async def test_binary_image_tool_degrades_to_structured_internal_error(facade: A
     body = result.structured_content
     assert body is not None
     assert body["success"] is False
-    assert body["error_code"] == "internal_error"
+    assert body["error_code"] == "internal"
     assert body["retryable"] is False
     assert body["_meta"]["tool"] == "get_network_image"
     assert body["_meta"]["unsafe_for_clinical_use"] is True
@@ -252,7 +256,7 @@ def test_build_error_envelope_500_is_non_retryable_internal() -> None:
         request_id="r3",
         elapsed_ms=1.0,
     )
-    assert env["error_code"] == "internal_error"
+    assert env["error_code"] == "internal"
     assert env["retryable"] is False
 
 

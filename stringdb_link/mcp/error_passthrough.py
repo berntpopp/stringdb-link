@@ -56,6 +56,38 @@ def _fallback_message(response: httpx.Response) -> str:
     return envelope.safe_error_message(response.status_code)
 
 
+def _validation_field_names(response: httpx.Response) -> list[str]:
+    """Extract offending parameter name(s) from a local request-validation body.
+
+    ONLY the FastAPI/Starlette 4xx validation shape ``{"detail": [{"loc": [...]}]}``
+    is parsed, and ONLY the ``loc`` leaf under ``body``/``query``/``path`` is read —
+    i.e. this server's own schema parameter names, never the caller-supplied value
+    (``input``), the human message (``msg``), or any upstream STRING error body
+    (which is HTTP 200 or lacks this shape). This is the one attacker-safe scalar in
+    the body: it lets the error name the parameter without echoing any prose. Any
+    parse failure yields no names (fail-closed).
+    """
+    try:
+        payload = response.json()
+    except Exception:
+        return []
+    detail = payload.get("detail") if isinstance(payload, dict) else None
+    if not isinstance(detail, list):
+        return []
+    names: list[str] = []
+    for item in detail:
+        loc = item.get("loc") if isinstance(item, dict) else None
+        if not isinstance(loc, list) or not loc:
+            continue
+        if loc[0] in ("body", "query", "path") and len(loc) > 1:
+            leaf = loc[-1]
+        else:
+            leaf = loc[-1]
+        if isinstance(leaf, str) and leaf not in names:
+            names.append(leaf)
+    return names
+
+
 def _build_error_envelope_from_exception(
     tool_name: str, exc: Exception, elapsed_ms: float
 ) -> dict[str, Any]:
@@ -65,7 +97,7 @@ def _build_error_envelope_from_exception(
     if response is None:
         # No HTTP response anywhere in the chain: a connection-level failure or a
         # non-HTTP bug (e.g. the image route's binary body defeating the JSON
-        # provider). Route it through a non-retryable internal_error with a
+        # provider). Route it through a non-retryable internal error with a
         # generic message (mask_error_details posture — no internal text leaks).
         return envelope.build_error_envelope(
             tool_name,
@@ -74,12 +106,16 @@ def _build_error_envelope_from_exception(
             request_id=request_id,
             elapsed_ms=elapsed_ms,
         )
+    field_errors: list[str] = []
+    if response.status_code in (400, 422):
+        field_errors = _validation_field_names(response)
     return envelope.build_error_envelope(
         tool_name,
         status_code=response.status_code,
         message=_fallback_message(response),
         request_id=request_id,
         elapsed_ms=elapsed_ms,
+        field_errors=field_errors,
     )
 
 
@@ -117,7 +153,12 @@ def wrap_structured_error_tools(route: Any, component: Any) -> None:
         except Exception as exc:  # all failures become the flat error frame
             elapsed_ms = (time.perf_counter() - start) * 1000
             error_envelope = _build_error_envelope_from_exception(tool_name, exc, elapsed_ms)
-            return ToolResult(structured_content=error_envelope)
+            # is_error=True gives the wire-level MCP ``isError`` bit alongside the
+            # structured envelope (Response-Envelope Standard v1). Verified against
+            # fastmcp 3.4.4: the RETURN path keeps structuredContent (only ``raise``
+            # would drop it). Without this a client branching on ``isError`` sees a
+            # failed call as a success.
+            return ToolResult(structured_content=error_envelope, is_error=True)
 
         elapsed_ms = (time.perf_counter() - start) * 1000
         raw = result.structured_content if isinstance(result.structured_content, dict) else {}
