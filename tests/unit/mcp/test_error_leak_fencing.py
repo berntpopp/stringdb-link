@@ -112,6 +112,46 @@ async def test_argument_validation_is_severed_to_fixed_message(facade: Any) -> N
 
 
 @pytest.mark.asyncio
+async def test_background_error_is_actionable_and_severed_at_the_mcp_boundary(
+    facade: Any,
+) -> None:
+    """A STRING 200 background error is an actionable, non-retryable MCP error."""
+    hostile_marker = "UNIQUE_BACKGROUND_MARKER_33_DO_NOT_ECHO"
+    with patch(
+        "stringdb_link.api.client.StringDBClient.get_functional_enrichment",
+        new_callable=AsyncMock,
+        return_value=[{"error": "background_error", "message": hostile_marker}],
+    ):
+        async with Client(facade) as client:
+            result = await client.call_tool(
+                "compute_functional_enrichment",
+                {
+                    "identifiers": ["AUDIT33_QUERY"],
+                    "species": 9606,
+                    "background_string_identifiers": ["AUDIT33_BACKGROUND"],
+                },
+                raise_on_error=False,
+            )
+
+    structured = result.structured_content
+    assert result.is_error is True
+    assert structured is not None
+    assert structured["success"] is False
+    assert structured["error_code"] == "invalid_input"
+    assert structured["retryable"] is False
+    assert structured["field"] == "background_string_identifiers"
+    assert hostile_marker not in json.dumps(structured)
+
+    mirror_text = result.content[0].text
+    mirror = json.loads(mirror_text)
+    assert mirror["success"] is False
+    assert mirror["error_code"] == "invalid_input"
+    assert mirror["retryable"] is False
+    assert mirror["field"] == "background_string_identifiers"
+    assert hostile_marker not in mirror_text
+
+
+@pytest.mark.asyncio
 async def test_timeout_yields_clean_fixed_message(facade: Any) -> None:
     """A transport/timeout error path yields a clean, leak-free fixed message."""
     with patch(
