@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Re-vendored the behaviour conformance gate from genefoundry-router `ba09fdc`
+  (`docs/conformance/behaviour.py` blob `30d639242b`) so live MCP contract checks
+  treat not-found example probes as inconclusive instead of failures.
+
 ## [4.1.0] - 2026-07-15
 
 GeneFoundry fleet MCP contract-hardening sweep. Vendors the behaviour gate
@@ -99,8 +107,6 @@ Surface: 4,625t → **4,083t**, `outputSchema` 24% → **0%**, `doc%` 100%, 0 �
   pinned to a digest, failing closed when it is unset. Nothing else changed:
   `container_name` (`stringdb_link_server`, which NPM forwards to), the Compose project
   name, the healthcheck, the hardening block, networks and `command` are all preserved.
-
-## [Unreleased]
 
 ## [4.0.5] - 2026-07-13
 
