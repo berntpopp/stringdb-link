@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import base64
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from stringdb_link.app import app
 from stringdb_link.models.responses import (
     EnrichmentTermListResponse,
     NetworkInteractionListResponse,
@@ -106,3 +108,41 @@ def test_malformed_enrichment_record_returns_502_not_500(test_client: TestClient
         response = test_client.post("/api/enrichment/functional", json=request_data)
 
     assert response.status_code == 502
+
+
+def test_network_image_json_route_returns_decodable_base64(test_client: TestClient):
+    image_bytes = b"\x89PNG\r\n\x1a\nbytes"
+    with patch(
+        "stringdb_link.api.client.StringDBClient.get_network_image",
+        new_callable=AsyncMock,
+    ) as upstream:
+        upstream.return_value = image_bytes
+        response = test_client.post(
+            "/api/images/network/json", json={"identifiers": ["TP53"], "species": 9606}
+        )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert base64.b64decode(body["image_base64"]) == image_bytes
+    assert body["image_format"] == "image"
+    assert body["content_type"] == "image/png"
+    assert body["image_size_bytes"] == len(image_bytes)
+
+
+def test_network_image_json_route_rejects_empty_upstream_image(test_client: TestClient):
+    with patch(
+        "stringdb_link.api.client.StringDBClient.get_network_image",
+        new_callable=AsyncMock,
+    ) as upstream:
+        upstream.return_value = b""
+        response = test_client.post(
+            "/api/images/network/json", json={"identifiers": ["TP53"], "species": 9606}
+        )
+
+    assert response.status_code == 502
+    assert "empty image" in response.json()["detail"]
+
+
+def test_functional_annotation_operation_is_registered():
+    route = next(route for route in app.routes if route.name == "get_functional_annotations")
+    assert route.path == "/api/annotations/functional"

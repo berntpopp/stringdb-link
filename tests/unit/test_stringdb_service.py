@@ -2,11 +2,12 @@
 
 # Private member access is needed for testing internal methods
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from stringdb_link.exceptions import StringDBServiceError
+from stringdb_link.exceptions import StringDBServiceError, ValidationError
 from stringdb_link.models.requests import (
     AnnotationRequest,
     EnrichmentRequest,
@@ -29,6 +30,45 @@ from stringdb_link.models.responses import (
 )
 from stringdb_link.models.stringdb import ImageFormat, NetworkFlavor, NetworkType, OutputFormat
 from stringdb_link.services.stringdb_service import StringDBService
+
+_AUDIT_ENRICHMENT_TERMS = [
+    {
+        "category": "KEGG",
+        "term": "hsa00010",
+        "number_of_genes": 2,
+        "number_of_genes_in_background": 100,
+        "ncbi_taxon_id": 9606,
+        "input_genes": ["TP53"],
+        "preferred_names": ["TP53"],
+        "p_value": 0.02,
+        "fdr": 0.20,
+        "description": "Higher-FDR KEGG term",
+    },
+    {
+        "category": "KEGG",
+        "term": "hsa04115",
+        "number_of_genes": 2,
+        "number_of_genes_in_background": 100,
+        "ncbi_taxon_id": 9606,
+        "input_genes": ["TP53"],
+        "preferred_names": ["TP53"],
+        "p_value": 0.005,
+        "fdr": 0.05,
+        "description": "Lower-FDR KEGG term",
+    },
+    {
+        "category": "Process",
+        "term": "GO:0006915",
+        "number_of_genes": 1,
+        "number_of_genes_in_background": 100,
+        "ncbi_taxon_id": 9606,
+        "input_genes": ["TP53"],
+        "preferred_names": ["TP53"],
+        "p_value": 0.001,
+        "fdr": 0.01,
+        "description": "Non-KEGG term",
+    },
+]
 
 
 @pytest.fixture
@@ -617,3 +657,65 @@ class TestUpstreamParseFailures:
         with pytest.raises(StringDBServiceError) as exc_info:
             await service.get_network_interactions(request)
         assert exc_info.value.status_code == 500
+
+
+@pytest.mark.parametrize(
+    ("limit", "expected_fdr", "expected_truncated"),
+    [(1, [0.05], True), (2, [0.05, 0.20], False), (3, [0.05, 0.20], False)],
+)
+async def test_enrichment_filters_sorts_and_reports_full_total(
+    service, mock_client, limit, expected_fdr, expected_truncated
+):
+    mock_client.get_functional_enrichment.return_value = _AUDIT_ENRICHMENT_TERMS
+
+    result = await service.get_functional_enrichment(
+        EnrichmentRequest(identifiers=["TP53", "MDM2"], species=9606, category="KEGG", limit=limit)
+    )
+
+    assert result.total_count == 2
+    assert result.truncated is expected_truncated
+    assert result.truncated is (result.total_count > len(result.terms))
+    assert [term.fdr for term in result.terms] == expected_fdr
+
+
+async def test_enrichment_background_error_names_parameter(service, mock_client):
+    mock_client.get_functional_enrichment.return_value = [
+        {"error": "background_error", "message": "ignored upstream prose"}
+    ]
+
+    with pytest.raises(ValidationError) as exc_info:
+        await service.get_functional_enrichment(
+            EnrichmentRequest(identifiers=["BBS1", "BBS2"], species=9606)
+        )
+
+    assert exc_info.value.field == "background_string_identifiers"
+
+
+async def test_network_link_schema_advertises_only_usable_formats(
+    facade: Any, service, mock_client
+):
+    tool = next(tool for tool in await facade.list_tools() if tool.name == "get_network_link")
+    advertised = set(tool.parameters["properties"]["output_format"]["enum"])
+    link_url = "https://version-12-0.string-db.org/cgi/link?to=AUDIT33"
+    raw_link_responses = {
+        OutputFormat.JSON: {"url": link_url},
+        OutputFormat.TSV: f"url\n{link_url}\n",
+        OutputFormat.TSV_NO_HEADER: f"{link_url}\n",
+        OutputFormat.XML: f"<url>{link_url}</url>",
+    }
+    request = LinkRequest(identifiers=["TP53", "MDM2"], species=9606)
+    usable_formats = set()
+
+    for output_format, upstream_response in raw_link_responses.items():
+        mock_client.get_link.return_value = upstream_response
+        result = await service.get_network_link(request, output_format=output_format.value)
+        assert isinstance(result, LinkInfo)
+        assert result.url == link_url
+        usable_formats.add(result.output_format)
+
+    assert advertised == usable_formats
+
+
+async def test_functional_annotation_route_is_exposed_as_an_mcp_tool(facade: Any):
+    names = {tool.name for tool in await facade.list_tools()}
+    assert "get_functional_annotations" in names

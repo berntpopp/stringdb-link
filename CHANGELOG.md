@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Release-audit regressions for the repaired `4.1.0` MCP surface: decodable nonempty
+  network images, the functional-annotation REST/MCP route, honest filtered enrichment
+  pagination, generated usable network-link formats, and fenced non-retryable STRING
+  background-identifier errors. This release publishes the already-merged repair rather
+  than changing its public version.
+
 ### Changed
 
 - Re-vendored the behaviour conformance gate from genefoundry-router `56db958`
