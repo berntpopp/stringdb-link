@@ -1,5 +1,7 @@
 # Modernize Python Stack And Agent Workflow Implementation Plan
 
+> Historical record
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Modernize StringDB-Link's Python stack, uv workflow, local checks, and agent instructions to match PubTator-Link and GeneReview-Link conventions without changing runtime behavior.
