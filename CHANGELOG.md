@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.2] - 2026-07-30
+
+### Changed
+
+- **CI tests the interpreter that actually ships.** The `quality` job now runs
+  on a `["3.12", "3.14"]` matrix instead of 3.12 only. `docker/Dockerfile` ships
+  `python:3.14-slim`, so until now the test suite was never exercised on the
+  interpreter that reaches production — only the image itself was, via
+  `container-ci`/`conformance`. A 3.14-only stdlib or typing regression would
+  have shipped uncaught. 3.12 stays in the matrix because it is the declared
+  `requires-python` floor; dropping it would make that floor a false claim. The
+  coverage gate still runs once (on 3.14, push to `main`). `requires-python`,
+  ruff `target-version` and mypy `python_version` are deliberately unchanged at
+  3.12.
+- **The matrix is forced with `UV_PYTHON`, not just `setup-python`.** `uv`
+  resolves its interpreter from `.python-version` (pinned to 3.12 for local dev)
+  *before* it consults `PATH`, so `actions/setup-python` alone does not move it:
+  both legs would have built a 3.12 environment and the "3.14" leg would have
+  tested the floor twice — green, and meaningless. The job now exports
+  `UV_PYTHON: ${{ matrix.python-version }}`, which outranks `.python-version`
+  and applies to every `uv run` inside `make ci-local`.
+- **New guard `tests/unit/test_ci_python_matrix.py`.** Pins the matrix against
+  `pyproject.toml`'s floor and the Dockerfile's `FROM python:<x.y>-slim`, so a
+  base-image bump that is not mirrored into CI fails instead of silently
+  re-opening the blind spot.
+
 ## [4.1.1] - 2026-07-30
 
 Dependabot onboarding plus the accumulated dependency sweep it had been hiding.

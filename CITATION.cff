@@ -13,7 +13,7 @@ authors:
   given-names: Bernt
   email: bernt.popp@charite.de
   affiliation: Charité – Universitätsmedizin Berlin
-version: 4.1.1
+version: 4.1.2
 license: MIT
 repository-code: https://github.com/berntpopp/stringdb-link
 url: https://genefoundry.org
