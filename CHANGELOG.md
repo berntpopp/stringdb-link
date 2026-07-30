@@ -7,8 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.1] - 2026-07-30
+
+Dependabot onboarding plus the accumulated dependency sweep it had been hiding.
+This repository had **no `.github/dependabot.yml` at all**, so its "zero open
+Dependabot PRs" reported the absence of a watcher rather than health: Python
+dependencies, GitHub Actions and the container base image had never been
+auto-bumped. No runtime behaviour change.
+
 ### Added
 
+- **Dependabot coverage** (`.github/dependabot.yml`), fleet-standard four
+  ecosystems: `uv` at `/`, `github-actions` at `/`, `docker` and
+  `docker-compose` at `/docker`. Weekly Monday, Europe/Berlin, staggered
+  04:00/04:15/04:30/04:45, limit 5, `deps`/`ci` commit prefixes.
 - Release-audit regressions for the repaired `4.1.0` MCP surface: decodable nonempty
   network images, the functional-annotation REST/MCP route, honest filtered enrichment
   pagination, generated usable network-link formats, and fenced non-retryable STRING
@@ -20,6 +32,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Re-vendored the behaviour conformance gate from genefoundry-router `56db958`
   (`docs/conformance/behaviour.py` blob `c69801687`) so live MCP contract checks
   treat not-found example probes as inconclusive and keep empty auxiliary objects from hiding counted rows.
+- **Dependencies swept** (43 locked packages moved). Direct: `fastapi`
+  0.136.3 → 0.141.1, `uvicorn` 0.48.0 → 0.52.0, `mcp` 1.28.1 → 1.29.0,
+  `fastmcp` 3.4.4 → 3.4.5, `typer` 0.25.1 → 0.27.0, `prometheus-client`
+  0.25.0 → 0.26.0, `python-multipart` 0.0.31 → 0.0.32, `ruff` 0.15.14 →
+  0.16.0, `mypy` 2.1.0 → 2.3.0, `pytest` 9.0.3 → 9.1.1, `pytest-asyncio`
+  1.3.0 → 1.4.0, `pre-commit` 4.6.0 → 4.6.1. Notable transitives:
+  `cryptography` 48.0.1 → 49.0.0, `certifi` 2026.5.20 → 2026.7.22,
+  `websockets` 16.0 → 17.0, `anyio` 4.13.0 → 4.14.2.
+- **`mcp[cli]` floor raised `>=1.27.0` → `>=1.28.1`.** The lock already pinned a
+  fixed version, but the constraint still *permitted* a resolve vulnerable to
+  GHSA-vj7q-gjh5-988w (WebSocket transport missing Host/Origin validation),
+  GHSA-jpw9-pfvf-9f58 (HTTP transports serving session requests without
+  verifying the authenticated principal) and GHSA-hvrp-rf83-w775 (experimental
+  task handlers reachable across clients). The floor now makes that resolve
+  impossible.
+- Ruff's lint rule set is now declared with `select` instead of
+  `extend-select`. ruff 0.16.0 grew its *default* rule set from 59 to 413
+  rules; `extend-select` would have silently adopted all of them. The listed
+  rules are a superset of the pre-0.16 default, so the effective rule set is
+  unchanged.
+- Pinned GitHub Actions: `actions/checkout` 7.0.0 → 7.0.1 (and 6.0.3 → 7.0.1 in
+  `container-security.yml`, which had drifted a major version behind the other
+  workflows), `actions/setup-python` v6 → 7.0.0, `astral-sh/setup-uv` 8.2.0 →
+  9.0.0.
+- Container base image moved from `python:3.12-slim` (digest `423ed6a`) to the
+  fleet-standard `python:3.14-slim` (digest `cea0e60`). Verified locally: image
+  builds, the SUID/hardlink hardening guards still pass, and the container
+  serves REST `/api/health` plus MCP `initialize` on Python 3.14.6 with all 11
+  transport + behaviour conformance probes green.
+
+### Fixed
+
+- `test_functional_annotation_operation_is_registered` now asserts against the
+  advertised OpenAPI schema instead of walking `app.routes`. FastAPI >=0.141
+  keeps sub-routers as opaque `_IncludedRouter` entries rather than flattening
+  their `APIRoute`s into `app.routes`, so the private-attribute walk stopped
+  seeing included routes. The route itself is unchanged and still served.
 
 ## [4.1.0] - 2026-07-15
 

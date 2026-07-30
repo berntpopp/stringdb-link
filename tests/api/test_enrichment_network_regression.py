@@ -144,5 +144,10 @@ def test_network_image_json_route_rejects_empty_upstream_image(test_client: Test
 
 
 def test_functional_annotation_operation_is_registered():
-    route = next(route for route in app.routes if route.name == "get_functional_annotations")
-    assert route.path == "/api/annotations/functional"
+    # Assert against the advertised OpenAPI surface rather than walking
+    # `app.routes`: FastAPI >=0.141 keeps sub-routers as opaque `_IncludedRouter`
+    # entries instead of flattening their APIRoutes into `app.routes`, so the
+    # private-attribute walk no longer sees included routes. The schema is the
+    # contract clients actually consume, so this is the stronger assertion.
+    operation = app.openapi()["paths"]["/api/annotations/functional"]["post"]
+    assert operation["operationId"] == "get_functional_annotations"
