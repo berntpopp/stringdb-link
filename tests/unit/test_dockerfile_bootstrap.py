@@ -21,3 +21,11 @@ def test_dockerfile_pins_uv_and_has_no_floating_pip_upgrade() -> None:
     text = _DOCKERFILE.read_text()
     assert "pip install --upgrade" not in text, "floating pip/uv upgrade must be removed"
     assert _UV_PIN in text, "uv must be copied from a digest-pinned image"
+
+
+def test_runtime_image_removes_unused_pip_installations() -> None:
+    text = _DOCKERFILE.read_text()
+    assert "/usr/local/lib/python*/site-packages/pip" in text
+    assert "/opt/venv/lib/python*/site-packages/pip" in text
+    assert "/usr/local/bin/pip3.14" in text
+    assert "/opt/venv/bin/pip3.14" in text
