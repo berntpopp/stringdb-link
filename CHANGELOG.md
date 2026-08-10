@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.3] - 2026-08-10
+
+### Security
+
+- Refresh runtime dependencies, including `cryptography` 50.0.0, and remove
+  unused vulnerable packaging tooling from the production image.
+
+### Changed
+
+- Refresh pinned CI actions and use the released genefoundry-router v0.7.6
+  reusable container workflows.
+
 ## [4.1.2] - 2026-07-30
 
 ### Changed
