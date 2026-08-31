@@ -3,7 +3,7 @@
 
 # --- Builder Stage ---
 # This stage installs all dependencies and creates a clean Python environment
-FROM python:3.14-slim@sha256:a7fb1e634c4a578f9e0bd6327f11a3cde11b7a9395f48e24360c0988bcc5c2bc AS builder
+FROM python:3.14-slim@sha256:cae66f2ef0ec51a9891263eeee7f987dacf0a9879e8aa9353d5606e0530619a5 AS builder
 
 # Set environment variables for optimal Python behavior
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -39,7 +39,7 @@ RUN uv sync --frozen --no-dev --active --no-install-project
 
 # --- Prepared Stage ---
 # This stage prepares the runtime filesystem before the scratch production image
-FROM python:3.14-slim@sha256:a7fb1e634c4a578f9e0bd6327f11a3cde11b7a9395f48e24360c0988bcc5c2bc AS prepared
+FROM python:3.14-slim@sha256:cae66f2ef0ec51a9891263eeee7f987dacf0a9879e8aa9353d5606e0530619a5 AS prepared
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \

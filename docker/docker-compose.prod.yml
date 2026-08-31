@@ -39,7 +39,7 @@ services:
     init: true
 
     command: !reset null
-    restart: on-failure
+    restart: unless-stopped
 
     # Production resource limits
     deploy: !override

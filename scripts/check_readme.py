@@ -18,6 +18,7 @@ Exits non-zero on any violation.
 
 from __future__ import annotations
 
+import configparser
 import re
 import sys
 from pathlib import Path
@@ -62,7 +63,19 @@ GENERATED_BLOCK = re.compile(
 
 
 def repo_slug() -> str:
-    return ROOT.name
+    """Return the GitHub repository name even when this is a linked worktree."""
+    git_dir = ROOT / ".git"
+    if git_dir.is_file():
+        pointer = git_dir.read_text(encoding="utf-8").strip().removeprefix("gitdir: ")
+        worktree_git_dir = (ROOT / pointer).resolve()
+        common_dir = (
+            worktree_git_dir / (worktree_git_dir / "commondir").read_text().strip()
+        ).resolve()
+        git_dir = common_dir
+    config = configparser.ConfigParser(interpolation=None)
+    config.read(git_dir / "config", encoding="utf-8")
+    remote = config.get('remote "origin"', "url", fallback="")
+    return remote.removesuffix(".git").rstrip("/").rsplit("/", maxsplit=1)[-1] or ROOT.name
 
 
 def is_router() -> bool:
