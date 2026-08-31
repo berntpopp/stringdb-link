@@ -3,7 +3,7 @@
 
 # --- Builder Stage ---
 # This stage installs all dependencies and creates a clean Python environment
-FROM python:3.14-slim@sha256:a7fb1e634c4a578f9e0bd6327f11a3cde11b7a9395f48e24360c0988bcc5c2bc AS builder
+FROM python:3.14-slim@sha256:cae66f2ef0ec51a9891263eeee7f987dacf0a9879e8aa9353d5606e0530619a5 AS builder
 
 # Set environment variables for optimal Python behavior
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -14,7 +14,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_LINK_MODE=copy
 
 # Install system dependencies required for building Python packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     ca-certificates \
@@ -39,7 +39,7 @@ RUN uv sync --frozen --no-dev --active --no-install-project
 
 # --- Prepared Stage ---
 # This stage prepares the runtime filesystem before the scratch production image
-FROM python:3.14-slim@sha256:a7fb1e634c4a578f9e0bd6327f11a3cde11b7a9395f48e24360c0988bcc5c2bc AS prepared
+FROM python:3.14-slim@sha256:cae66f2ef0ec51a9891263eeee7f987dacf0a9879e8aa9353d5606e0530619a5 AS prepared
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -51,7 +51,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     TRANSPORT=unified
 
 # Install runtime dependencies only
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
@@ -82,6 +82,8 @@ RUN rm -rf /root/.cache/pip \
     /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.14 \
     /opt/venv/lib/python*/site-packages/pip \
     /opt/venv/lib/python*/site-packages/pip-*.dist-info \
+    /opt/venv/lib/python*/site-packages/setuptools \
+    /opt/venv/lib/python*/site-packages/setuptools-*.dist-info \
     /opt/venv/bin/pip /opt/venv/bin/pip3 /opt/venv/bin/pip3.14 \
     && find / -xdev -type d -name __pycache__ -prune -exec rm -rf '{}' + \
     && find / -xdev -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
