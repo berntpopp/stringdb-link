@@ -14,7 +14,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_LINK_MODE=copy
 
 # Install system dependencies required for building Python packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     ca-certificates \
@@ -51,7 +51,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     TRANSPORT=unified
 
 # Install runtime dependencies only
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
@@ -82,6 +82,8 @@ RUN rm -rf /root/.cache/pip \
     /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.14 \
     /opt/venv/lib/python*/site-packages/pip \
     /opt/venv/lib/python*/site-packages/pip-*.dist-info \
+    /opt/venv/lib/python*/site-packages/setuptools \
+    /opt/venv/lib/python*/site-packages/setuptools-*.dist-info \
     /opt/venv/bin/pip /opt/venv/bin/pip3 /opt/venv/bin/pip3.14 \
     && find / -xdev -type d -name __pycache__ -prune -exec rm -rf '{}' + \
     && find / -xdev -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
