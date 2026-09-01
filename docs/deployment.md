@@ -73,6 +73,30 @@ read-only root filesystem, all capabilities dropped, `no-new-privileges`, resour
 digest-pinned base image, and CI image scanning. Release metadata is pinned in
 [`../container-release.json`](../container-release.json).
 
+## Fleet deploy contract
+
+The GeneFoundry fleet controller (`strato_v6_docker_npm`) deploys and validates
+`docker/docker-compose.npm.yml` and requires every service there to declare a numeric,
+non-root `user: "<uid>:<gid>"` — its runtime observer proves the effective uid from
+`/proc`. `stringdb-link`'s value (`999:999`) comes from `docker/Dockerfile`
+(`groupadd --system app`, `useradd --system --gid app`), not from a sibling `-link`
+repo. `user` must **not** appear in the Compose files listed in
+`container-release.json` (`docker-compose.yml`, `docker-compose.prod.yml`); the shared
+release gate forbids it there. `tests/unit/test_deploy_overlay_user.py` guards both
+sides. Self-check the merged render before shipping an overlay change:
+
+```bash
+export STRINGDB_LINK_IMAGE="ghcr.io/berntpopp/stringdb-link@sha256:<any 64-hex digest>"
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.npm.yml \
+  config --format json > /tmp/stringdb-link-rendered.json
+cd /path/to/strato_v6_docker_npm && uv run python -c "
+import sys, json; sys.path.insert(0, 'scripts')
+from utils.deployment_preflight import canonical_projection
+p = canonical_projection(json.load(open('/tmp/stringdb-link-rendered.json')), project='stringdb-link')
+for n, s in p['services'].items(): print(n, 'user=', s.get('user'))
+print('PROJECTION OK')"
+```
+
 ## Behind a reverse proxy
 
 The backend is **unauthenticated by design**. The `genefoundry-router` (or your own reverse
