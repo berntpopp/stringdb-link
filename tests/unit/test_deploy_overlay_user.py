@@ -46,6 +46,16 @@ def test_npm_overlay_declares_numeric_user_for_every_service() -> None:
         )
 
 
+def test_npm_overlay_declares_expose_for_the_container_port() -> None:
+    """The fleet controller's validate-deployed-overlay gate refuses a rendered model
+    with no `expose` entry naming the image's container port: an undeclared port reads
+    as 'exposed ports differ from Compose'. docker-compose.npm.yml resets `ports` to
+    empty (NPM handles routing), so it must declare `expose: ["8000"]` itself."""
+    compose = _load_compose(ROOT / "docker" / "docker-compose.npm.yml")
+    service = compose["services"]["stringdb-link"]
+    assert [str(port) for port in service.get("expose") or []] == ["8000"]
+
+
 def test_release_compose_files_never_declare_user() -> None:
     release_config = json.loads((ROOT / "container-release.json").read_text(encoding="utf-8"))
     for rel_path in release_config["service"]["compose_files"]:

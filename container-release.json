@@ -8,6 +8,10 @@
       "docker/docker-compose.yml",
       "docker/docker-compose.prod.yml"
     ],
+    "deployed_compose_files": [
+      "docker/docker-compose.yml",
+      "docker/docker-compose.npm.yml"
+    ],
     "name": "stringdb-link",
     "container_port": 8000,
     "health_path": "/api/health",
