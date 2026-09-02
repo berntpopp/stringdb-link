@@ -91,7 +91,21 @@ from `/proc`, so a symbolic `USER app` alone is not enough.
 `docker/docker-compose.prod.yml`) — the shared release gate
 (`container_release.py validate-compose`, `ALLOWED_SERVICE_KEYS`) forbids it
 there. `tests/unit/test_deploy_overlay_user.py` guards both halves of this
-contract.
+contract, plus `expose: ["8000"]` in `docker/docker-compose.npm.yml` (needed
+because `ports: !reset []` publishes nothing, but the controller's
+`validate-deployed-overlay` gate refuses a rendered model with no `expose`
+entry naming the image's container port).
+
+`container-release.json` declares `deployed_compose_files`
+(`docker/docker-compose.yml`, `docker/docker-compose.npm.yml` — the exact set
+Strato deploys, no `docker-compose.prod.yml`) so that gate checks the file
+set the controller actually deploys, not the release-only `compose_files`.
+`container-release.yml` and `container-ci.yml` both pin their shared
+workflow at `genefoundry-router` `v0.8.5`
+(`31ea81cee5475fc3655c047c63a89739948f99a9`) — both must move together,
+since both validate `container-release.json` against the same
+`ReleaseConfig` pydantic schema (`extra="forbid"`); bumping only one leaves
+the other rejecting `deployed_compose_files` as an unknown field.
 
 Release checklist this repo enforces (see `tests/unit/test_version_single_source.py`
 and `tests/api/test_health.py`, which assert `pyproject.toml`'s version is the

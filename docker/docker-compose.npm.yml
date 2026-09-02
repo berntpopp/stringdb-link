@@ -31,7 +31,14 @@ services:
     # is required: a plain `ports: []` MERGES with (does not replace) the base
     # list, leaving ${PORT:-8000}:8000 published (collides with other host binds).
     ports: !reset []
-    
+    # GeneFoundry deploy contract: the fleet controller's validate-deployed-overlay
+    # gate requires an `expose` entry naming the same container port the image
+    # already EXPOSEs, so the rendered Compose model documents the port even
+    # though nothing is published to the host.
+    expose:
+      - "8000"
+
+
     # Connect to NPM's shared network
     networks:
       - npm_shared

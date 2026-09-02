@@ -82,8 +82,16 @@ non-root `user: "<uid>:<gid>"` — its runtime observer proves the effective uid
 (`groupadd --system app`, `useradd --system --gid app`), not from a sibling `-link`
 repo. `user` must **not** appear in the Compose files listed in
 `container-release.json` (`docker-compose.yml`, `docker-compose.prod.yml`); the shared
-release gate forbids it there. `tests/unit/test_deploy_overlay_user.py` guards both
-sides. Self-check the merged render before shipping an overlay change:
+release gate forbids it there. The overlay also declares `expose: ["8000"]` even
+though `ports: !reset []` publishes nothing, because the controller's
+`validate-deployed-overlay` gate refuses a rendered model with no `expose` entry
+naming the image's container port. `container-release.json`'s `deployed_compose_files`
+lists exactly `docker-compose.yml` + `docker-compose.npm.yml` — the set Strato deploys
+— so that gate checks the file set actually deployed; `container-release.yml` and
+`container-ci.yml` both pin their shared workflow at `genefoundry-router` `v0.8.5`
+(`31ea81cee5475fc3655c047c63a89739948f99a9`) and must move together, since both
+validate `container-release.json` against the same schema. `tests/unit/test_deploy_overlay_user.py`
+guards all of the above. Self-check the merged render before shipping an overlay change:
 
 ```bash
 export STRINGDB_LINK_IMAGE="ghcr.io/berntpopp/stringdb-link@sha256:<any 64-hex digest>"
