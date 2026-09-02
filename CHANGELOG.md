@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.6] - 2026-09-02
+
+### Fixed
+
+- Deploy: declare `expose: ["8000"]` in `docker/docker-compose.npm.yml` (routing already
+  publishes no host port) so the fleet controller's `validate-deployed-overlay` gate passes;
+  bump both reusable container workflows to the reviewed router v0.8.5 revision and declare
+  `deployed_compose_files` in `container-release.json`.
+
 ## [4.1.5] - 2026-09-02
 
 ### Fixed
