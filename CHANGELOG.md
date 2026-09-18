@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.7] - 2026-09-18
+
+### Changed
+
+- Consolidate Dependabot and security dependency updates.
+- Update reusable workflows pin to genefoundry-router v0.9.1.
+- Update action pins for `setup-uv` and `codeql-action`.
+- Configure Dependabot groups for `python-dependencies` and `github-actions`.
+
 ## [4.1.6] - 2026-09-02
 
 ### Fixed
