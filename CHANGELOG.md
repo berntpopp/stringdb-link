@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [4.1.8] - 2026-10-03
+
+### Security
+
+- Refresh targeted dependency security updates, including PyJWT, and pin reusable container workflows to the verified router v0.9.3 source.
+
+### Changed
+
+- Refresh the digest-pinned Python 3.14 slim base image and update pinned GitHub Actions.
+
 ## [4.1.7] - 2026-09-18
 
 ### Changed
