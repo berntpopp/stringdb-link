@@ -15,7 +15,7 @@ class StringDBAPIConfigModel(BaseModel):
     """StringDB API configuration model."""
 
     base_url: str = Field(
-        default="https://version-12-0.string-db.org/api",
+        default="https://version-12-5.string-db.org/api",
         description="Base URL for StringDB API",
     )
     redirect_base_url: str = Field(

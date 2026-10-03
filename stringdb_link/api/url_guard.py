@@ -2,7 +2,7 @@
 
 The STRING API is reached over ``follow_redirects=True`` because the generic
 ``string-db.org`` host issues a stable-address redirect to the pinned versioned
-host (``version-12-0.string-db.org``) and STRING is a **POST** API — keeping
+host (``version-12-5.string-db.org``) and STRING is a **POST** API — keeping
 httpx's redirect machinery is the only way the form body is method/body-handled
 correctly across that hop (a hand-rolled loop would drop it). This module adds
 the two guardrails that a raw ``follow_redirects=True`` lacks:
@@ -97,7 +97,7 @@ def build_host_allowlist(*base_urls: str) -> frozenset[tuple[str, int]]:
 def stringdb_allowed_hosts(base_url: str, redirect_base_url: str) -> frozenset[tuple[str, int]]:
     """Allowlist for the STRING client: the configured (versioned) host + generic.
 
-    Production pins ``version-12-0.string-db.org`` (derived from ``base_url`` so a
+    Production pins ``version-12-5.string-db.org`` (derived from ``base_url`` so a
     version bump follows the config), plus the generic ``string-db.org`` host that
     stable-address-redirects to it. Both are permitted; every other host is not.
     """

@@ -1,7 +1,7 @@
 """F-17: outbound redirect hops and successful-response sizes are bounded.
 
 STRING is a POST API served from a *versioned* host (production pins
-``version-12-0.string-db.org``); the generic ``string-db.org`` host issues a
+``version-12-5.string-db.org``); the generic ``string-db.org`` host issues a
 stable-address redirect to the versioned host. The hardening therefore keeps
 httpx's redirect machinery (``follow_redirects=True``) so the POST form body is
 handled correctly, and layers a request event-hook that validates *every* hop
@@ -30,12 +30,12 @@ from stringdb_link.api.url_guard import (
     make_url_guard,
 )
 
-VERSIONED_BASE = "https://version-12-0.string-db.org/api"
+VERSIONED_BASE = "https://version-12-5.string-db.org/api"
 GENERIC_BASE = "https://string-db.org/api"
 
 
 def _versioned_url(path: str = "/api/json/network") -> str:
-    return f"https://version-12-0.string-db.org{path}"
+    return f"https://version-12-5.string-db.org{path}"
 
 
 # --------------------------------------------------------------------------- #
@@ -45,7 +45,7 @@ def _versioned_url(path: str = "/api/json/network") -> str:
 
 def test_build_host_allowlist_derives_from_base_url() -> None:
     allow = build_host_allowlist(VERSIONED_BASE, f"https://{GENERIC_STRING_HOST}")
-    assert allow == frozenset({("version-12-0.string-db.org", 443), ("string-db.org", 443)})
+    assert allow == frozenset({("version-12-5.string-db.org", 443), ("string-db.org", 443)})
 
 
 @pytest.mark.asyncio
@@ -67,14 +67,14 @@ async def test_guard_rejects_cross_host() -> None:
 async def test_guard_rejects_non_https() -> None:
     guard = make_url_guard(build_host_allowlist(VERSIONED_BASE))
     with pytest.raises(DisallowedURLError):
-        await guard(httpx.Request("POST", "http://version-12-0.string-db.org/api/json/network"))
+        await guard(httpx.Request("POST", "http://version-12-5.string-db.org/api/json/network"))
 
 
 @pytest.mark.asyncio
 async def test_guard_rejects_userinfo() -> None:
     guard = make_url_guard(build_host_allowlist(VERSIONED_BASE))
     with pytest.raises(DisallowedURLError):
-        await guard(httpx.Request("POST", "https://user:pass@version-12-0.string-db.org/api/x"))
+        await guard(httpx.Request("POST", "https://user:pass@version-12-5.string-db.org/api/x"))
 
 
 @pytest.mark.asyncio
@@ -88,7 +88,7 @@ async def test_guard_rejects_empty_userinfo() -> None:
     """
     guard = make_url_guard(build_host_allowlist(VERSIONED_BASE))
     with pytest.raises(DisallowedURLError):
-        await guard(httpx.Request("POST", "https://:@version-12-0.string-db.org/api/x"))
+        await guard(httpx.Request("POST", "https://:@version-12-5.string-db.org/api/x"))
 
 
 @pytest.mark.asyncio
@@ -96,14 +96,14 @@ async def test_guard_rejects_username_only_userinfo() -> None:
     """Username-only userinfo (``user@`` form) on an allowlisted host is rejected."""
     guard = make_url_guard(build_host_allowlist(VERSIONED_BASE))
     with pytest.raises(DisallowedURLError):
-        await guard(httpx.Request("POST", "https://user@version-12-0.string-db.org/api/x"))
+        await guard(httpx.Request("POST", "https://user@version-12-5.string-db.org/api/x"))
 
 
 @pytest.mark.asyncio
 async def test_guard_allows_clean_host_no_userinfo() -> None:
     """The clean allowlisted origin with NO userinfo still passes the gate."""
     guard = make_url_guard(build_host_allowlist(VERSIONED_BASE))
-    await guard(httpx.Request("POST", "https://version-12-0.string-db.org/api/x"))
+    await guard(httpx.Request("POST", "https://version-12-5.string-db.org/api/x"))
 
 
 # --------------------------------------------------------------------------- #
@@ -124,7 +124,7 @@ async def test_ensure_client_wires_guard_and_bounds_redirects() -> None:
         assert inner.max_redirects <= 5
         assert inner.event_hooks["request"], "request event-hook must be installed"
         assert client._allowed_hosts == frozenset(
-            {("version-12-0.string-db.org", 443), ("string-db.org", 443)},
+            {("version-12-5.string-db.org", 443), ("string-db.org", 443)},
         )
     finally:
         await client.close()
@@ -156,7 +156,7 @@ def _guarded_client(
 @pytest.mark.asyncio
 async def test_cross_host_redirect_raises() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.host == "version-12-0.string-db.org":
+        if request.url.host == "version-12-5.string-db.org":
             return httpx.Response(302, headers={"location": "https://evil.example.com/steal"})
         raise AssertionError("guard must block the cross-host hop")
 
@@ -174,7 +174,7 @@ async def test_non_https_redirect_downgrade_raises() -> None:
         if request.url.scheme == "https":
             return httpx.Response(
                 307,
-                headers={"location": "http://version-12-0.string-db.org/api/json/network"},
+                headers={"location": "http://version-12-5.string-db.org/api/json/network"},
             )
         raise AssertionError("guard must block the http downgrade hop")
 
@@ -199,7 +199,7 @@ async def test_generic_to_versioned_redirect_preserves_post_body() -> None:
     # Production allowlist: both the versioned host and the generic host.
     production_allowlist = build_host_allowlist(VERSIONED_BASE, GENERIC_BASE)
     assert production_allowlist == frozenset(
-        {("version-12-0.string-db.org", 443), ("string-db.org", 443)},
+        {("version-12-5.string-db.org", 443), ("string-db.org", 443)},
     )
 
     seen_bodies: dict[str, bytes] = {}
@@ -209,7 +209,7 @@ async def test_generic_to_versioned_redirect_preserves_post_body() -> None:
         if request.url.host == "string-db.org":
             return httpx.Response(
                 307,
-                headers={"location": "https://version-12-0.string-db.org/api/json/network"},
+                headers={"location": "https://version-12-5.string-db.org/api/json/network"},
             )
         return httpx.Response(200, json=[{"stringId_A": "9606.ENSP1"}])
 
@@ -227,7 +227,7 @@ async def test_generic_to_versioned_redirect_preserves_post_body() -> None:
 
     assert result == [{"stringId_A": "9606.ENSP1"}]
     # The final (versioned) hop received the intact POST form body.
-    versioned_body = seen_bodies["version-12-0.string-db.org"]
+    versioned_body = seen_bodies["version-12-5.string-db.org"]
     assert b"identifiers=TP53" in versioned_body
     assert versioned_body == seen_bodies["string-db.org"]
 
@@ -235,7 +235,7 @@ async def test_generic_to_versioned_redirect_preserves_post_body() -> None:
 @pytest.mark.asyncio
 async def test_happy_path_versioned_no_redirect_unchanged() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.host == "version-12-0.string-db.org"
+        assert request.url.host == "version-12-5.string-db.org"
         return httpx.Response(200, json=[{"stringId_A": "9606.ENSP1"}])
 
     client = _guarded_client(httpx.MockTransport(handler), VERSIONED_BASE)
@@ -282,7 +282,7 @@ async def test_network_image_happy_path_returns_bytes() -> None:
     payload = b"\x89PNG\r\n\x1a\n" + b"imagedata"
 
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.host == "version-12-0.string-db.org"
+        assert request.url.host == "version-12-5.string-db.org"
         return httpx.Response(200, content=payload)
 
     client = _guarded_client(httpx.MockTransport(handler), VERSIONED_BASE)
@@ -303,13 +303,13 @@ async def test_network_image_happy_path_returns_bytes() -> None:
 async def test_guard_rejects_alternate_port() -> None:
     """An allowlisted host on a NON-default port is a distinct origin: rejected.
 
-    A host-only check would let ``version-12-0.string-db.org:8080`` through; the
+    A host-only check would let ``version-12-5.string-db.org:8080`` through; the
     guard must validate the full origin (scheme=https, exact host, AND port=443).
     """
     guard = make_url_guard(build_host_allowlist(VERSIONED_BASE))
     with pytest.raises(DisallowedURLError):
         await guard(
-            httpx.Request("POST", "https://version-12-0.string-db.org:8080/api/json/network"),
+            httpx.Request("POST", "https://version-12-5.string-db.org:8080/api/json/network"),
         )
 
 
@@ -318,7 +318,7 @@ async def test_guard_allows_explicit_default_port() -> None:
     """The explicit default HTTPS port (:443) is the production origin: allowed."""
     guard = make_url_guard(build_host_allowlist(VERSIONED_BASE))
     await guard(
-        httpx.Request("POST", "https://version-12-0.string-db.org:443/api/json/network"),
+        httpx.Request("POST", "https://version-12-5.string-db.org:443/api/json/network"),
     )
 
 
@@ -334,7 +334,7 @@ async def test_alternate_port_redirect_rejected() -> None:
         if request.url.port in (None, 443):
             return httpx.Response(
                 307,
-                headers={"location": "https://version-12-0.string-db.org:8080/api/json/network"},
+                headers={"location": "https://version-12-5.string-db.org:8080/api/json/network"},
             )
         raise AssertionError("guard must block the alternate-port hop")
 
@@ -355,7 +355,7 @@ def test_check_no_redirect_method_change_flags_post_to_get() -> None:
     """A 302 that rewrote POST->GET (dropping the body) must be flagged."""
     original = httpx.Request("POST", "https://string-db.org/api/json/network")
     redirect_resp = httpx.Response(302, request=original)
-    final_req = httpx.Request("GET", "https://version-12-0.string-db.org/api/json/network")
+    final_req = httpx.Request("GET", "https://version-12-5.string-db.org/api/json/network")
     final_resp = httpx.Response(200, request=final_req, history=[redirect_resp])
     with pytest.raises(RedirectBodyLossError):
         check_no_redirect_method_change(final_resp)
@@ -363,7 +363,7 @@ def test_check_no_redirect_method_change_flags_post_to_get() -> None:
 
 def test_check_no_redirect_method_change_allows_no_redirect() -> None:
     """A direct (no-history) response never trips the method-change guard."""
-    req = httpx.Request("POST", "https://version-12-0.string-db.org/api/json/network")
+    req = httpx.Request("POST", "https://version-12-5.string-db.org/api/json/network")
     check_no_redirect_method_change(httpx.Response(200, request=req))
 
 
@@ -371,7 +371,7 @@ def test_check_no_redirect_method_change_allows_preserved_method() -> None:
     """A 307 that preserved POST->POST (body intact) is permitted."""
     original = httpx.Request("POST", "https://string-db.org/api/json/network")
     redirect_resp = httpx.Response(307, request=original)
-    final_req = httpx.Request("POST", "https://version-12-0.string-db.org/api/json/network")
+    final_req = httpx.Request("POST", "https://version-12-5.string-db.org/api/json/network")
     final_resp = httpx.Response(200, request=final_req, history=[redirect_resp])
     check_no_redirect_method_change(final_resp)
 
@@ -390,7 +390,7 @@ async def test_method_changing_redirect_fails_closed() -> None:
         if request.url.host == "string-db.org":
             return httpx.Response(
                 302,
-                headers={"location": "https://version-12-0.string-db.org/api/json/network"},
+                headers={"location": "https://version-12-5.string-db.org/api/json/network"},
             )
         # Reaching here means httpx sent the rewritten bodyless GET -- the exact
         # silent-failure the fix must prevent.
@@ -436,7 +436,7 @@ async def test_blocked_host_redirect_never_logs_or_returns_host(
     blocked = "attacker-controlled.evil.example"
 
     def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.host == "version-12-0.string-db.org":
+        if request.url.host == "version-12-5.string-db.org":
             return httpx.Response(307, headers={"location": f"https://{blocked}/steal"})
         raise AssertionError("guard must block the cross-host redirect hop")
 

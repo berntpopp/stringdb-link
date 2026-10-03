@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Adopt the current STRING v12.5 release through its stable versioned API host; response
+  fields and score scales remain compatible, while returned biological scores and terms
+  reflect the new upstream dataset.
+
 ## [4.1.9] - 2026-10-03
 
 - Update FastAPI and pytest-mock to the current dependency releases.

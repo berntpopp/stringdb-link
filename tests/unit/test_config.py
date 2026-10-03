@@ -17,6 +17,12 @@ def test_settings_defaults():
     assert settings.log_level == "INFO"
 
 
+def test_default_stringdb_base_url_uses_current_versioned_release():
+    settings = Settings()
+
+    assert settings.stringdb_base_url == "https://version-12-5.string-db.org/api"
+
+
 def test_settings_validation():
     """Test settings validation."""
     # Valid settings - using nested structure

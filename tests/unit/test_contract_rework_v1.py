@@ -137,13 +137,13 @@ async def test_interaction_partners_paginate_per_protein() -> None:
 # --- Issue 3: get_network_link keeps tsv/xml, shapes them structurally --------
 @pytest.mark.asyncio
 async def test_network_link_tsv_returns_structured_url() -> None:
-    tsv = "url\nhttps://version-12-0.string-db.org/cgi/link?to=DEADBEEF\n"
+    tsv = "url\nhttps://version-12-5.string-db.org/cgi/link?to=DEADBEEF\n"
     svc, _ = _service_with_client(get_link=AsyncMock(return_value=tsv))
     request = LinkRequest(identifiers=["TP53", "MDM2"], species=9606)
     info = await svc.get_network_link(request, output_format="tsv")
 
     assert info.output_format == "tsv"
-    assert info.url == "https://version-12-0.string-db.org/cgi/link?to=DEADBEEF"
+    assert info.url == "https://version-12-5.string-db.org/cgi/link?to=DEADBEEF"
     assert info.formatted == tsv  # the raw STRING serialization is preserved, not dropped
 
 
@@ -151,20 +151,20 @@ async def test_network_link_tsv_returns_structured_url() -> None:
 async def test_network_link_xml_extracts_clean_url() -> None:
     xml = (
         '<?xml version="1.0"?>\n<get_linkResult>\n<record>\n'
-        "<url>https://version-12-0.string-db.org/cgi/link?to=CAFE</url>\n"
+        "<url>https://version-12-5.string-db.org/cgi/link?to=CAFE</url>\n"
         "</record>\n</get_linkResult>\n"
     )
     svc, _ = _service_with_client(get_link=AsyncMock(return_value=xml))
     info = await svc.get_network_link(LinkRequest(identifiers=["TP53"], species=9606), "xml")
     # The trailing </url> markup must NOT be swallowed into the URL.
-    assert info.url == "https://version-12-0.string-db.org/cgi/link?to=CAFE"
+    assert info.url == "https://version-12-5.string-db.org/cgi/link?to=CAFE"
     assert info.formatted == xml
 
 
 @pytest.mark.asyncio
 async def test_network_link_json_has_no_formatted() -> None:
     svc, _ = _service_with_client(
-        get_link=AsyncMock(return_value="https://version-12-0.string-db.org/cgi/link?to=AA")
+        get_link=AsyncMock(return_value="https://version-12-5.string-db.org/cgi/link?to=AA")
     )
     request = LinkRequest(identifiers=["TP53"], species=9606)
     info = await svc.get_network_link(request, output_format="json")
