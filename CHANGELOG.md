@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.10] - 2026-10-03
+
 ### Changed
 
 - Adopt the current STRING v12.5 release through its stable versioned API host; response

@@ -1744,7 +1744,7 @@ wheels = [
 
 [[package]]
 name = "stringdb-link"
-version = "4.1.9"
+version = "4.1.10"
 source = { editable = "." }
 dependencies = [
     { name = "asgi-correlation-id" },
