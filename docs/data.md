@@ -15,12 +15,9 @@ The base URL is **pinned to STRING v12.5**, the current release since 2026-09-29
 STRINGDB_API__BASE_URL=https://version-12-5.string-db.org/api
 ```
 
-The pin is deliberate and load-bearing. STRING's own API guidance is explicit about it:
-
-> When developing your tool use default STRING address (`https://string-db.org`), but when
-> your code is ready, you should link to a specific STRING version (for example
-> `https://version-12-5.string-db.org`), which will ensure that for the same query you will
-> always get the same API response, even after STRING or API gets updated.
+The pin is deliberate and load-bearing. STRING's [API guidance](https://version-12-5.string-db.org/help/api/)
+recommends using a version-specific address in production so results remain reproducible
+across upstream updates.
 
 The official API version-history page records v12.5 as current and preserves v12.0 at its
 versioned address. It lists 59,309,604 proteins and 28,464,487,749 interactions in v12.5,
