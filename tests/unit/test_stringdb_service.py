@@ -696,7 +696,7 @@ async def test_network_link_schema_advertises_only_usable_formats(
 ):
     tool = next(tool for tool in await facade.list_tools() if tool.name == "get_network_link")
     advertised = set(tool.parameters["properties"]["output_format"]["enum"])
-    link_url = "https://version-12-0.string-db.org/cgi/link?to=AUDIT33"
+    link_url = "https://version-12-5.string-db.org/cgi/link?to=AUDIT33"
     raw_link_responses = {
         OutputFormat.JSON: {"url": link_url},
         OutputFormat.TSV: f"url\n{link_url}\n",

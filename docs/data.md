@@ -9,21 +9,25 @@ All data are fetched live from the [STRING](https://string-db.org/) REST API. Th
 local data bundle, no ingest step and no build step** — `stringdb-link` is a typed, cached,
 rate-limited proxy in front of STRING, so it serves immediately after install.
 
-The base URL is **pinned to STRING v12.0**:
+The base URL is **pinned to STRING v12.5**, the current release since 2026-09-29:
 
 ```env
-STRINGDB_API__BASE_URL=https://version-12-0.string-db.org/api
+STRINGDB_API__BASE_URL=https://version-12-5.string-db.org/api
 ```
 
-The pin is deliberate and load-bearing. STRING's own API guidance is explicit about it:
+The pin is deliberate and load-bearing. STRING's [API guidance](https://version-12-5.string-db.org/help/api/)
+recommends using a version-specific address in production so results remain reproducible
+across upstream updates.
 
-> When developing your tool use default STRING address (`https://string-db.org`), but when
-> your code is ready, you should link to a specific STRING version (for example
-> `https://version-12-0.string-db.org`), which will ensure that for the same query you will
-> always get the same API response, even after STRING or API gets updated.
-
-Repointing the base URL at the unversioned host makes results non-reproducible across STRING
-releases. Bump the pin deliberately, as a reviewed change, when adopting a new STRING release.
+The official API version-history page records v12.5 as current and preserves v12.0 at its
+versioned address. It lists 59,309,604 proteins and 28,464,487,749 interactions in v12.5,
+up from 27,541,372,833 interactions in v12.0; the protein count is unchanged. See the
+[official STRING version history](https://version-12-5.string-db.org/cgi/access?footer_active_subpage=apis).
+Repointing the base URL at the unversioned host makes results
+non-reproducible across STRING releases. Bump the pin deliberately, as a reviewed change,
+when adopting a new STRING release. The v12.5 API returned the same response field sets and
+score scales as v12.0 in representative live comparisons; underlying scores and enrichment
+results do change with the dataset release.
 
 A verbatim copy of STRING's API reference is vendored at [`rest-api.md`](rest-api.md).
 

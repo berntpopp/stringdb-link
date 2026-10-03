@@ -56,7 +56,7 @@ spec forbids the combination and browsers reject it, so it can only ever be a fo
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `STRINGDB_API__BASE_URL` | `https://version-12-0.string-db.org/api` | **Pinned to STRING v12.0** for reproducibility — see [data.md](data.md). |
+| `STRINGDB_API__BASE_URL` | `https://version-12-5.string-db.org/api` | **Pinned to STRING v12.5** for reproducibility — see [data.md](data.md). |
 | `STRINGDB_API__RATE_LIMIT_PER_SECOND` | `1.0` | STRING asks callers to wait one second between calls. Do not raise it. |
 | `STRINGDB_API__TIMEOUT` | `30` | Seconds. |
 | `STRINGDB_API__MAX_RETRIES` | `3` | Retries use exponential backoff. |
@@ -64,7 +64,7 @@ spec forbids the combination and browsers reject it, so it can only ever be a fo
 | `STRINGDB_API__CALLER_IDENTITY` | `StringDB-Link/0.1.0` | Sent to STRING on every call, as STRING requests. |
 | `STRINGDB_API__USER_AGENT` | `StringDB-Link/0.1.0` | `User-Agent` header on every STRING call. |
 | `STRINGDB_API__REDIRECT_BASE_URL` | `https://string-db.org` | The only STRING origin redirects are allowed to target. |
-| `STRINGDB_API__ENDPOINTS` | *(map, see below)* | STRING paths keyed by operation: `resolve`, `network`, `interactions`, `enrichment`, `annotations`, `images`, `homology`, `homology_best`, `ppi_enrichment`, `enrichment_image`. Settable as a JSON object, but the defaults track the pinned STRING v12.0 API — overriding them is unsupported. |
+| `STRINGDB_API__ENDPOINTS` | *(map, see below)* | STRING paths keyed by operation: `resolve`, `network`, `interactions`, `enrichment`, `annotations`, `images`, `homology`, `homology_best`, `ppi_enrichment`, `enrichment_image`. Settable as a JSON object, but the defaults track the pinned STRING v12.5 API — overriding them is unsupported. |
 
 ## Caching
 

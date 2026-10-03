@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 An **MCP server over [STRING](https://string-db.org/)**, the protein–protein association
-network and functional-enrichment database. It serves STRING v12.0 as typed MCP tools over
+network and functional-enrichment database. It serves STRING v12.5 as typed MCP tools over
 Streamable HTTP, with the same surface available as a FastAPI REST API.
 
 > [!IMPORTANT]
@@ -25,10 +25,10 @@ agents. Four concrete frictions:
 - **Results are untyped rows** with terse column names (`stringId_A`, `escore`, `fscore`),
   with no schema to validate against.
 - **The default host is a moving target.** STRING tells integrators to pin a versioned host
-  (`version-12-0.string-db.org`) so the same query keeps returning the same answer across
+  (`version-12-5.string-db.org`) so the same query keeps returning the same answer across
   releases — and asks callers to wait one second between calls and to identify themselves.
 
-This server absorbs all four: it pins STRING v12.0, resolves identifiers, validates every
+This server absorbs all four: it pins STRING v12.5, resolves identifiers, validates every
 parameter with Pydantic, returns typed envelopes, throttles to STRING's courtesy rate, and
 caches by result class. No data bundle, no ingest, no build step — it proxies STRING live.
 
@@ -76,8 +76,8 @@ namespace (a CI guard enforces this).
 
 ## Data & provenance
 
-Data come live from the STRING REST API, pinned to **STRING v12.0**
-(`https://version-12-0.string-db.org/api`) so a query keeps its answer across STRING
+Data come live from the STRING REST API, pinned to **STRING v12.5**
+(`https://version-12-5.string-db.org/api`) so a query keeps its answer across STRING
 releases. There is no local mirror; freshness is STRING's, minus a per-result-class cache
 TTL (24 h for identifier mappings, 12 h for networks, 6 h for enrichment).
 
@@ -102,7 +102,7 @@ Full detail — endpoint map, TTL rationale, identifier semantics: [data.md](doc
   reverse proxy, and Claude Desktop wiring.
 - [Architecture](docs/architecture.md) — how the MCP surface is generated from the REST
   routes, the MCP hardening layers, and the REST API with examples.
-- [Data & provenance](docs/data.md) — STRING sources, the v12.0 pin, caching, licence and
+- [Data & provenance](docs/data.md) — STRING sources, the v12.5 pin, caching, licence and
   citation.
 - [STRING API reference](docs/rest-api.md) — the upstream API docs, vendored.
 - [SECURITY.md](SECURITY.md) — vulnerability reporting and required repository settings.

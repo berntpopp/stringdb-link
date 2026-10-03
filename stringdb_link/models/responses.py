@@ -430,12 +430,12 @@ class VersionInfo(BaseResponse):
     string_version: str = Field(
         ...,
         description="Current STRING database version",
-        json_schema_extra={"example": "12.0"},
+        json_schema_extra={"example": "12.5"},
     )
     string_stable_address: str = Field(
         ...,
         description="Stable URL for this STRING version",
-        json_schema_extra={"example": "https://version-12-0.string-db.org"},
+        json_schema_extra={"example": "https://version-12-5.string-db.org"},
     )
 
 
@@ -446,7 +446,7 @@ class LinkInfo(BaseResponse):
         ...,
         description="URL to STRING webpage showing the network",
         json_schema_extra={
-            "example": "https://version-12-0.string-db.org/cgi/network?networkId=abc123"
+            "example": "https://version-12-5.string-db.org/cgi/network?networkId=abc123"
         },
     )
     output_format: str = Field(
@@ -461,7 +461,7 @@ class LinkInfo(BaseResponse):
             "(tsv/tsv-no-header/xml). Null for json — the structured 'url' IS the "
             "json representation."
         ),
-        json_schema_extra={"example": "url\nhttps://version-12-0.string-db.org/cgi/link?to=abc123"},
+        json_schema_extra={"example": "url\nhttps://version-12-5.string-db.org/cgi/link?to=abc123"},
     )
 
 
