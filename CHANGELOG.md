@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.12] - 2026-10-20
+
+### Security
+
+- certifi 2026.10.19: drops emSign root CAs whose intermediate CA keys were compromised (critical).
+
 ### Changed
 
 - Unify on Python 3.14 (`requires-python`, tooling, CI single-version matrix, router reusable workflows v0.10.5); Dependabot no longer proposes Python minor jumps.
