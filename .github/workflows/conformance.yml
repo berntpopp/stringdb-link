@@ -5,6 +5,10 @@ on:
     branches: [main, master]
 permissions:
   contents: read
+
+# No setup-python here: pin uv's interpreter so the runner cannot pick 3.15.
+env:
+  UV_PYTHON: "3.14"
 concurrency:
   group: conformance-${{ github.ref }}
   cancel-in-progress: true

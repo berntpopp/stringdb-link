@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture(scope="session")
-def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
+def event_loop() -> Generator[asyncio.AbstractEventLoop]:
     """Create event loop for the test session."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
@@ -45,7 +45,7 @@ def test_settings() -> Settings:
 
 
 @pytest.fixture
-def override_settings(test_settings: Settings) -> Generator[Settings, None, None]:
+def override_settings(test_settings: Settings) -> Generator[Settings]:
     """Override settings for tests."""
     original_settings = get_settings()
 
@@ -59,7 +59,7 @@ def override_settings(test_settings: Settings) -> Generator[Settings, None, None
 
 
 @pytest.fixture
-def test_client(override_settings: Settings) -> Generator[TestClient, None, None]:
+def test_client(override_settings: Settings) -> Generator[TestClient]:
     """Create test client."""
     client = TestClient(app)
     yield client
@@ -69,14 +69,14 @@ def test_client(override_settings: Settings) -> Generator[TestClient, None, None
 @pytest_asyncio.fixture
 async def async_client(
     override_settings: Settings,
-) -> AsyncGenerator[AsyncClient, None]:
+) -> AsyncGenerator[AsyncClient]:
     """Create async test client."""
     async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
 
 
 @pytest_asyncio.fixture
-async def stringdb_client() -> AsyncGenerator[StringDBClient, None]:
+async def stringdb_client() -> AsyncGenerator[StringDBClient]:
     """Create StringDB client for testing."""
     client = StringDBClient(
         base_url="https://string-db.org/api",
