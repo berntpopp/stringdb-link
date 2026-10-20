@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.13] - 2026-10-20
+
+### Security
+
+- Republish of 4.1.12 (certifi 2026.10.19 critical fix); 4.1.12's container release failed on a transient Sigstore timeout and was never published.
+
 ## [4.1.12] - 2026-10-20
 
 ### Security
