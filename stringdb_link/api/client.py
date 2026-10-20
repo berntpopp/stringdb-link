@@ -300,7 +300,7 @@ class StringDBClient:
             self.failed_requests += 1
             http_errors.raise_client_error(endpoint, response)
 
-        except (DisallowedURLError, ResponseTooLargeError, RedirectBodyLossError):
+        except DisallowedURLError, ResponseTooLargeError, RedirectBodyLossError:
             # A blocked outbound hop, an over-cap body, or a method-changing
             # (POST->GET body-loss) redirect is NON-RETRYABLE: re-raise as-is so the
             # retry loop never re-issues it and the broad handler below does not mask

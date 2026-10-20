@@ -40,9 +40,7 @@ def load_allowlist() -> dict[str, int]:
                 f"{ALLOWLIST}:{line_number}: ceiling must be a positive integer"
             ) from error
         if parsed_ceiling <= 0:
-            raise AllowlistError(
-                f"{ALLOWLIST}:{line_number}: ceiling must be a positive integer"
-            )
+            raise AllowlistError(f"{ALLOWLIST}:{line_number}: ceiling must be a positive integer")
         entries[path] = parsed_ceiling
     return entries
 

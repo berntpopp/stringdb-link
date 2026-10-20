@@ -33,14 +33,13 @@ classifiers = [
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Topic :: Scientific/Engineering :: Bio-Informatics",
   "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Typing :: Typed",
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
   "fastapi>=0.141.1,<1.0.0",
   "uvicorn[standard]>=0.52.3,<1.0.0",
@@ -91,7 +90,9 @@ packages = ["stringdb_link"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py314"
+# Vendored fleet file: must stay byte-identical to genefoundry-router (never reformat).
+extend-exclude = ["tests/conformance/behaviour.py"]
 
 [tool.ruff.lint]
 select = [
@@ -126,7 +127,7 @@ line-ending = "lf"
 "tests/**/*" = ["S101", "S104", "S105", "S110", "T20", "B011", "SIM105", "SIM108"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 strict = true
 warn_return_any = true
 warn_unused_configs = true

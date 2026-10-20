@@ -38,6 +38,10 @@ updates:
       time: "04:30"
       timezone: "Europe/Berlin"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+        # Python minor upgrades are a deliberate fleet migration (all repos move together).
     commit-message:
       prefix: "deps"
 
@@ -49,5 +53,9 @@ updates:
       time: "04:45"
       timezone: "Europe/Berlin"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+        # Python minor upgrades are a deliberate fleet migration (all repos move together).
     commit-message:
       prefix: "deps"

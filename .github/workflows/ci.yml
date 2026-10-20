@@ -22,16 +22,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.12 is the `requires-python` floor; 3.14 is the interpreter the
-        # container actually ships (docker/Dockerfile). Both ends are tested so a
-        # base-image bump can never ship an interpreter CI has not exercised.
-        python-version: ["3.12", "3.14"]
+        # Single interpreter: the one the container ships (docker/Dockerfile) and the
+        # `requires-python` floor. Python minor upgrades are a fleet-wide migration.
+        python-version: ["3.14"]
 
     env:
       # Without this the matrix is a lie. `uv` resolves its interpreter from
-      # `.python-version` (pinned to 3.12 for local dev) *before* it looks at
-      # PATH, so `setup-python` installing 3.14 changes nothing: both legs would
-      # build a 3.12 environment and the "3.14" leg would test the floor twice.
+      # `.python-version` *before* it looks at PATH, so `setup-python` alone
+      # would not decide which interpreter builds the environment.
       # `UV_PYTHON` outranks `.python-version`, and applies to every `uv run`
       # inside `make ci-local`, not just the explicit `uv sync` below.
       UV_PYTHON: ${{ matrix.python-version }}

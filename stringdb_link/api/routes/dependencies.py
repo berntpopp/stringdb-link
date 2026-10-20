@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from structlog.typing import FilteringBoundLogger
 
 
-async def get_stringdb_client() -> AsyncGenerator[StringDBClient, None]:
+async def get_stringdb_client() -> AsyncGenerator[StringDBClient]:
     """Dependency to get StringDB client instance.
 
     Yields:
