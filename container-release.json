@@ -20,7 +20,12 @@
   },
   "data": {
     "mode": "none",
-    "image_allowlist": []
+    "image_allowlist": [
+      "opt/venv/lib/python3.14/site-packages/beartype/_check/cls/hint/data/__init__.py",
+      "opt/venv/lib/python3.14/site-packages/beartype/_check/cls/hint/data/hintdataabc.py",
+      "opt/venv/lib/python3.14/site-packages/beartype/_check/cls/hint/data/hintdatacode.py",
+      "opt/venv/lib/python3.14/site-packages/beartype/_check/cls/hint/data/hintdataerror.py"
+    ]
   },
   "definitions": {
     "contract": "data-independent"
