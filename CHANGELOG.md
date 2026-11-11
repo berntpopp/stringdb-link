@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.14] - 2026-11-11
+
+### Security
+- Dependency sweep: authlib 1.9.5 (critical/high/medium advisories), joserfc 1.8.0, dnspython 2.9.2, fastmcp 3.4.11 (floor raised to 3.4.10), opentelemetry-api 1.45.2, filelock 4.2.10, virtualenv 21.15.6; full `uv lock --upgrade`.
+- CI: setup-python v7.1.0, setup-uv v10.3.2, codeql-action v4.39.1.
+
 ## [4.1.13] - 2026-10-20
 
 ### Security
