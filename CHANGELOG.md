@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.1.16] - 2026-11-13
+
 ### Changed
 
+- Release built with genefoundry-router v0.10.17 reusable workflows (recovery/attestation fixes).
 - CI: re-pin the reusable container CI/release workflows to genefoundry-router v0.10.17 (`2cd86e3`), picking up the release recovery-path platform fix (v0.10.14), `validate-config` applying the evidence assembler's data predicate (v0.10.16), and recovery attestation verification, the GHCR tag race and partial-rerun evidence lookup fixes (v0.10.17).
 
 ## [4.1.15] - 2026-11-11
