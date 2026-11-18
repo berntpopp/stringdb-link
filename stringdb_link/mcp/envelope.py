@@ -231,12 +231,36 @@ def _augment_meta(
     return augmented
 
 
+def _partner_cap_next_commands(
+    envelope: dict[str, Any], arguments: dict[str, Any] | None
+) -> list[dict[str, Any]] | None:
+    """Point a truncated partner list at the pair/set interaction query.
+
+    The partner list is capped per protein, so a protein missing from it may still
+    interact with the query; the edges among specific proteins come from
+    ``search_protein_interactions``.
+    """
+    if envelope.get("truncated") is not True:
+        return None
+    args = {k: v for k, v in (arguments or {}).items() if k in ("identifiers", "species")}
+    return [
+        {
+            "tool": "search_protein_interactions",
+            "arguments": args,
+            "reason": "Partner list is capped per protein (truncated): absence of a protein "
+            "here is NOT evidence of no interaction. To test whether specific proteins "
+            "interact, list all of them in identifiers.",
+        }
+    ]
+
+
 def build_success_envelope(
     tool_name: str,
     raw: dict[str, Any],
     *,
     request_id: str,
     elapsed_ms: float,
+    arguments: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Reshape a raw REST JSON body into the success frame.
 
@@ -265,6 +289,11 @@ def build_success_envelope(
         envelope.update(working)
     else:
         envelope["result"] = working
+
+    if tool_name == "get_interaction_partners":
+        next_commands = _partner_cap_next_commands(envelope, arguments)
+        if next_commands:
+            meta["next_commands"] = next_commands
 
     envelope["_meta"] = _augment_meta(
         meta, tool_name=tool_name, request_id=request_id, elapsed_ms=elapsed_ms

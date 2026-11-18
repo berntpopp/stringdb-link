@@ -34,29 +34,18 @@ router = APIRouter()
     response_model=NetworkInteractionListResponse,
     operation_id="search_protein_interactions",
     tags=["network"],
+    description=(
+        "Use this when asking whether given proteins interact: returns STRING edges "
+        "(with combined score) among the listed identifiers, e.g. a pair. Absent edge = "
+        "no interaction at required_score. add_nodes > 0 also adds neighbour proteins."
+    ),
 )
 async def get_network_interactions(
     request: NetworkRequest,
     service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
 ) -> NetworkInteractionListResponse:
-    """Get protein-protein interaction network.
-
-    Retrieves the protein-protein interaction network for the given proteins.
-    If only one protein is provided and add_nodes is 0, additional nodes will
-    be automatically added to show the interaction neighborhood.
-
-    Args:
-        request: Network interaction request
-        service: StringDB service instance
-        logger: Logger instance
-
-    Returns:
-        List of protein-protein interactions
-
-    Raises:
-        HTTPException: If the request fails
-    """
+    """Get the interaction network among the given proteins."""
     try:
         logger.info(
             "Getting network interactions",
@@ -115,29 +104,18 @@ async def get_network_interactions(
     response_model=InteractionPartnerListResponse,
     operation_id="get_interaction_partners",
     tags=["network"],
+    description=(
+        "Use this to list the top interaction partners (neighbourhood) of each protein, "
+        "capped at limit per protein. Not a pair test: absence from a capped list is not "
+        "evidence of no interaction; use search_protein_interactions for that."
+    ),
 )
 async def get_interaction_partners(
     request: InteractionPartnersRequest,
     service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
 ) -> InteractionPartnerListResponse:
-    """Get interaction partners for proteins.
-
-    Retrieves all interaction partners for the given proteins, not just
-    interactions between the input proteins. Useful for finding all
-    proteins that interact with your proteins of interest.
-
-    Args:
-        request: Interaction partners request
-        client: StringDB HTTP client
-        logger: Logger instance
-
-    Returns:
-        List of interaction partners
-
-    Raises:
-        HTTPException: If the request fails
-    """
+    """Get the top interaction partners of each given protein."""
     try:
         logger.info(
             "Getting interaction partners",
