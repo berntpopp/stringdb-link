@@ -245,8 +245,8 @@ async def test_every_tool_declares_read_only_open_world_annotations(facade: Any)
     assert tools
     for tool in tools:
         assert tool.annotations is not None, f"{tool.name} missing annotations"
-        assert tool.annotations.readOnlyHint is True
-        assert tool.annotations.openWorldHint is True
+        assert tool.annotations.read_only_hint is True
+        assert tool.annotations.open_world_hint is True
 
 
 # --------------------------------------------------------------------------- #

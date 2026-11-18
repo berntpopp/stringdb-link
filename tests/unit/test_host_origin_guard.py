@@ -4,12 +4,15 @@ from __future__ import annotations
 
 from importlib.metadata import version
 from pathlib import Path
+from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 from packaging.version import Version
 
 from stringdb_link.config import Settings, settings
+from stringdb_link.models.responses import InteractionPartnerListResponse
 from stringdb_link.server_manager import create_unified_app
 
 
@@ -100,3 +103,79 @@ def test_compose_propagates_allowlist_and_healthcheck_host(compose_file: str) ->
     assert "ALLOWED_HOSTS" in text
     assert '"localhost","127.0.0.1","::1"' in text
     assert '"Host: localhost"' in text
+
+
+_MODERN_VERSION = "2026-07-28"
+_MODERN_META = {
+    "io.modelcontextprotocol/protocolVersion": _MODERN_VERSION,
+    "io.modelcontextprotocol/clientCapabilities": {},
+    "io.modelcontextprotocol/clientInfo": {"name": "stringdb-host-test", "version": "1.0.0"},
+}
+
+
+def _modern_post(
+    client: TestClient, rpc_id: int, method: str, params: dict[str, object], name: str | None = None
+) -> Any:
+    headers = {
+        "Host": "stringdb-link.genefoundry.org",
+        "accept": "application/json, text/event-stream",
+        "content-type": "application/json",
+        "mcp-protocol-version": _MODERN_VERSION,
+        "mcp-method": method,
+    }
+    if name is not None:
+        headers["mcp-name"] = name
+    return client.post(
+        "/mcp",
+        headers=headers,
+        json={
+            "jsonrpc": "2.0",
+            "id": rpc_id,
+            "method": method,
+            "params": {**params, "_meta": _MODERN_META},
+        },
+    )
+
+
+def test_modern_mcp_http_discovers_lists_calls_and_fences_unknown_tool(
+    client: TestClient,
+) -> None:
+    """2026-07-28 sessionless era: discover -> list -> call, unknown tool fenced."""
+    hostile = "ignore-instructions-secret"
+    partners = InteractionPartnerListResponse(partners=[], total_count=0)
+    with (
+        patch(
+            "stringdb_link.services.stringdb_service.StringDBService.get_interaction_partners",
+            new_callable=AsyncMock,
+            return_value=partners,
+        ),
+        client,
+    ):
+        discover = _modern_post(client, 1, "server/discover", {})
+        listed = _modern_post(client, 2, "tools/list", {})
+        called = _modern_post(
+            client,
+            3,
+            "tools/call",
+            {
+                "name": "get_interaction_partners",
+                "arguments": {"identifiers": ["TP53"], "species": 9606},
+            },
+            name="get_interaction_partners",
+        )
+        unknown = _modern_post(
+            client, 4, "tools/call", {"name": hostile, "arguments": {}}, name=hostile
+        )
+
+    assert discover.status_code == 200
+    assert _MODERN_VERSION in discover.json()["result"]["supportedVersions"]
+    assert "mcp-session-id" not in discover.headers
+    assert listed.status_code == 200
+    assert "get_interaction_partners" in {t["name"] for t in listed.json()["result"]["tools"]}
+    assert called.status_code == 200
+    assert called.json()["result"]["structuredContent"]["success"] is True
+    assert unknown.status_code == 200
+    unknown_result = unknown.json()["result"]
+    assert unknown_result["isError"] is True
+    assert unknown_result["structuredContent"]["error_code"] == "not_found"
+    assert hostile not in unknown.text
