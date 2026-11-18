@@ -42,7 +42,7 @@ from fastmcp import Client
 from fastmcp.exceptions import ResourceError
 from mcp.shared.memory import create_client_server_memory_streams
 from mcp.shared.message import SessionMessage
-from mcp.types import INTERNAL_ERROR, INVALID_PARAMS, JSONRPCRequest
+from mcp.types import INVALID_PARAMS, JSONRPCRequest
 
 from stringdb_link.app import create_mcp_app
 from stringdb_link.mcp.untrusted_content import FORBIDDEN_CODEPOINTS
@@ -367,10 +367,9 @@ async def test_malformed_uri_real_request_frame_and_logs_are_clean() -> None:
     with _capture_server_logs() as logs:
         root = await _send_raw_request(low_level, "resources/read", {"uri": HOSTILE_MALFORMED_URI})
     assert isinstance(root, mcp_types.JSONRPCError)
-    # MCP SDK 1.x rejected the URI at request validation (INVALID_PARAMS); SDK 2.x
-    # types ``uri`` as a plain string, so it reaches dispatch and the guard answers
-    # with a fixed, URI-free internal error instead.
-    assert root.error.code in (INVALID_PARAMS, INTERNAL_ERROR)
+    # SDK 2.x types ``uri`` as a plain string, so it reaches dispatch and the
+    # Layer-3 backstop answers with a fixed, URI-free -32602.
+    assert root.error.code == INVALID_PARAMS
     _assert_clean_text(root.error.message, where="jsonrpc-error")
     if isinstance(root.error.data, str):
         _assert_clean_text(root.error.data, where="jsonrpc-error-data")

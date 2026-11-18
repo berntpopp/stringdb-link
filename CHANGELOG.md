@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.2.1] - 2026-11-18
+
+### Security
+
+- SDK 2 echoed an unknown JSON-RPC method name verbatim in the METHOD_NOT_FOUND error
+  `data` (both protocol eras); a low-level middleware now strips it (fixed
+  `-32601 Method not found`), and the log scrub covers the SDK 2 runner/dispatcher lines
+  (`mcp.server.runner`) that echo the method.
+- The resource/prompt protocol backstop raises `MCPError(INVALID_PARAMS)` instead of a plain
+  exception (which SDK 2 sent as `-32603`), so callers get `-32602` again.
+
 ## [4.2.0] - 2026-11-18
 
 ### Changed
