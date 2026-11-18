@@ -94,6 +94,43 @@ async def test_collection_tool_promotes_results_to_top_level(facade: Any) -> Non
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("truncated", [True, False])
+async def test_truncated_partner_list_points_to_pair_query(facade: Any, truncated: bool) -> None:
+    """A capped partner list says absence is not evidence and points at the set query."""
+    with patch(
+        "stringdb_link.services.stringdb_service.StringDBService.get_interaction_partners",
+        new_callable=AsyncMock,
+        return_value=InteractionPartnerListResponse(
+            partners=[_PARTNER], total_count=838 if truncated else 1, truncated=truncated
+        ),
+    ):
+        async with Client(facade) as client:
+            result = await client.call_tool(
+                "get_interaction_partners",
+                {"identifiers": ["MAP3K1", "HRAS"], "species": 9606, "limit": 10},
+            )
+
+    meta = result.structured_content["_meta"]
+    if not truncated:
+        assert "next_commands" not in meta
+        return
+    [cmd] = meta["next_commands"]
+    assert cmd["tool"] == "search_protein_interactions"
+    assert cmd["arguments"] == {"identifiers": ["MAP3K1", "HRAS"], "species": 9606}
+    assert "NOT evidence of no interaction" in cmd["reason"]
+
+
+@pytest.mark.asyncio
+async def test_network_tool_descriptions_are_model_facing(facade: Any) -> None:
+    """Descriptions carry a 'Use this' contract, not leaked docstring Args/Raises."""
+    tools = {t.name: t for t in await facade.list_tools()}
+    for name in ("get_interaction_partners", "search_protein_interactions"):
+        desc = tools[name].description or ""
+        assert desc.startswith("Use this"), name
+        assert "Args:" not in desc and "Raises:" not in desc, name
+
+
+@pytest.mark.asyncio
 async def test_single_tool_nests_payload_under_result(facade: Any) -> None:
     """A single-item tool nests its whole payload under ``result``."""
     with patch(

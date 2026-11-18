@@ -171,7 +171,11 @@ def wrap_structured_error_tools(route: Any, component: Any) -> None:
         elapsed_ms = (time.perf_counter() - start) * 1000
         raw = result.structured_content if isinstance(result.structured_content, dict) else {}
         return finalize_tool_result(
-            tool_name, raw, request_id=envelope.new_request_id(), elapsed_ms=elapsed_ms
+            tool_name,
+            raw,
+            request_id=envelope.new_request_id(),
+            elapsed_ms=elapsed_ms,
+            arguments=arguments,
         )
 
     object.__setattr__(component, "run", run_with_structured_errors)
@@ -183,6 +187,7 @@ def finalize_tool_result(
     *,
     request_id: str,
     elapsed_ms: float,
+    arguments: dict[str, Any] | None = None,
 ) -> ToolResult:
     """Shape a tool's SUCCESSFULLY-RETURNED payload into the final ToolResult.
 
@@ -199,6 +204,6 @@ def finalize_tool_result(
         return ToolResult(structured_content=error_envelope, is_error=True)
 
     success_envelope = envelope.build_success_envelope(
-        tool_name, raw, request_id=request_id, elapsed_ms=elapsed_ms
+        tool_name, raw, request_id=request_id, elapsed_ms=elapsed_ms, arguments=arguments
     )
     return ToolResult(structured_content=success_envelope)

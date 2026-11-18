@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.3.0] - 2026-11-18
+
+### Added
+
+- `get_interaction_partners`: when the per-protein partner list is capped (`truncated: true`),
+  `_meta.next_commands` points at `search_protein_interactions` with the same identifiers and
+  states that absence from a capped list is not evidence of no interaction (#121).
+
+### Changed
+
+- `get_interaction_partners` and `search_protein_interactions` descriptions are now
+  model-facing "Use this when" contracts (neighbourhood list vs. edges among given proteins)
+  instead of raw docstrings leaking `Args`/`Raises` implementation details (#121).
+
 ## [4.2.1] - 2026-11-18
 
 ### Security
