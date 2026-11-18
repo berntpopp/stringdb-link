@@ -165,6 +165,8 @@ def configure_third_party_loggers() -> None:
     loggers_config = {
         "httpx": "WARNING",
         "httpcore": "WARNING",
+        "httpx2": "WARNING",
+        "httpcore2": "WARNING",
         "uvicorn.access": "WARNING" if not settings.debug else "INFO",
         "uvicorn.error": "INFO",
         "fastapi": "INFO",

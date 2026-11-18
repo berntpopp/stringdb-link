@@ -215,4 +215,4 @@ async def test_fenced_tools_suppress_output_schema(facade: Any) -> None:
         tools = {t.name: t for t in await client.list_tools()}
 
     for tool_name in _FENCED_POINTERS:
-        assert tools[tool_name].outputSchema is None, tool_name
+        assert tools[tool_name].output_schema is None, tool_name

@@ -16,6 +16,7 @@ import time
 from typing import Any
 
 import httpx
+import httpx2
 from fastmcp.server.providers.openapi import OpenAPITool
 from fastmcp.tools.base import ToolResult
 
@@ -24,23 +25,29 @@ from stringdb_link.mcp.annotations import READ_ONLY_OPEN_WORLD
 
 _GENERIC_INTERNAL_MESSAGE = "An internal error occurred while processing the request."
 
+# FastMCP 4.x's OpenAPI provider calls the local FastAPI app via httpx2; legacy httpx
+# is kept so a response surfaced from any older client in the chain still classifies.
+_Response = httpx.Response | httpx2.Response
+_RESPONSE_TYPES = (httpx.Response, httpx2.Response)
+_STATUS_ERROR_TYPES = (httpx.HTTPStatusError, httpx2.HTTPStatusError)
 
-def _find_http_status_response(exc: BaseException) -> httpx.Response | None:
-    """Find an httpx response in an exception's cause/context chain."""
+
+def _find_http_status_response(exc: BaseException) -> _Response | None:
+    """Find an httpx/httpx2 response in an exception's cause/context chain."""
     current: BaseException | None = exc
     seen: set[int] = set()
     while current is not None and id(current) not in seen:
         seen.add(id(current))
-        if isinstance(current, httpx.HTTPStatusError):
+        if isinstance(current, _STATUS_ERROR_TYPES):
             return current.response
         response = getattr(current, "response", None)
-        if isinstance(response, httpx.Response):
+        if isinstance(response, _RESPONSE_TYPES):
             return response
         current = current.__cause__ or current.__context__
     return None
 
 
-def _fallback_message(response: httpx.Response) -> str:
+def _fallback_message(response: _Response) -> str:
     """Return a fixed, classification-keyed message. NEVER reads the response body.
 
     The response body -- whether the local FastAPI/ASGI error body or any
@@ -56,7 +63,7 @@ def _fallback_message(response: httpx.Response) -> str:
     return envelope.safe_error_message(response.status_code)
 
 
-def _validation_field_names(response: httpx.Response) -> list[str]:
+def _validation_field_names(response: _Response) -> list[str]:
     """Extract offending parameter name(s) from a local request-validation body.
 
     ONLY the FastAPI/Starlette 4xx validation shape ``{"detail": [{"loc": [...]}]}``

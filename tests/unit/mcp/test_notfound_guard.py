@@ -1,6 +1,6 @@
 """FastMCP-core not-found reflection guard, driven through the REAL MCP surface.
 
-FastMCP core (pinned ``>=3.4.4,<4.0.0``) reflects the caller's OWN requested tool
+FastMCP core (pinned ``>=4.2.2,<5.0.0``) reflects the caller's OWN requested tool
 name / resource URI / prompt name back to the caller (and to logs) BEFORE any
 backend middleware runs. On this OpenAPI-generated (``from_fastapi``) server the
 observed pristine-``main`` leaks are:
@@ -42,7 +42,7 @@ from fastmcp import Client
 from fastmcp.exceptions import ResourceError
 from mcp.shared.memory import create_client_server_memory_streams
 from mcp.shared.message import SessionMessage
-from mcp.types import INVALID_PARAMS, JSONRPCMessage, JSONRPCRequest
+from mcp.types import INTERNAL_ERROR, INVALID_PARAMS, JSONRPCRequest
 
 from stringdb_link.app import create_mcp_app
 from stringdb_link.mcp.untrusted_content import FORBIDDEN_CODEPOINTS
@@ -150,6 +150,13 @@ def _assert_all_content_clean(result: Any) -> None:
             _assert_clean_text(text, where=f"content[{index}]")
 
 
+_MODERN_META = {
+    "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+    "io.modelcontextprotocol/clientCapabilities": {},
+    "io.modelcontextprotocol/clientInfo": {"name": "stringdb-guard-test", "version": "1.0.0"},
+}
+
+
 async def _send_raw_request(low_level: Any, method: str, params: dict[str, Any]) -> Any:
     """Drive ONE raw JSON-RPC request end-to-end through the MCP session.
 
@@ -169,19 +176,22 @@ async def _send_raw_request(low_level: Any, method: str, params: dict[str, Any])
                     server_read,
                     server_write,
                     init_options,
-                    stateless=True,  # start Initialized: skip the handshake
                     raise_exceptions=False,
                 )
 
             task_group.start_soon(_run)
-            request = JSONRPCRequest(jsonrpc="2.0", id=1, method=method, params=params)
-            await client_write.send(SessionMessage(message=JSONRPCMessage(request)))
+            # Modern (2026-07-28) era: a per-request ``_meta`` envelope replaces the
+            # initialize handshake, so the hostile request is the first message.
+            request = JSONRPCRequest(
+                jsonrpc="2.0", id=1, method=method, params={**params, "_meta": _MODERN_META}
+            )
+            await client_write.send(SessionMessage(message=request))
             with anyio.fail_after(5):
                 for _ in range(6):
                     message = await client_read.receive()
                     if isinstance(message, Exception):
                         raise message
-                    candidate = message.message.root
+                    candidate = message.message
                     if isinstance(
                         candidate,
                         (mcp_types.JSONRPCError, mcp_types.JSONRPCResponse),
@@ -357,7 +367,10 @@ async def test_malformed_uri_real_request_frame_and_logs_are_clean() -> None:
     with _capture_server_logs() as logs:
         root = await _send_raw_request(low_level, "resources/read", {"uri": HOSTILE_MALFORMED_URI})
     assert isinstance(root, mcp_types.JSONRPCError)
-    assert root.error.code == INVALID_PARAMS
+    # MCP SDK 1.x rejected the URI at request validation (INVALID_PARAMS); SDK 2.x
+    # types ``uri`` as a plain string, so it reaches dispatch and the guard answers
+    # with a fixed, URI-free internal error instead.
+    assert root.error.code in (INVALID_PARAMS, INTERNAL_ERROR)
     _assert_clean_text(root.error.message, where="jsonrpc-error")
     if isinstance(root.error.data, str):
         _assert_clean_text(root.error.data, where="jsonrpc-error-data")
@@ -409,7 +422,7 @@ def test_unknown_tool_result_carries_json_mirror() -> None:
     assert mirrored == structured
     _assert_clean_node(structured)
     # The wire result must flip isError=True (ratified fleet contract).
-    assert result.to_mcp_result().isError is True
+    assert result.to_mcp_result().is_error is True
 
 
 def test_scrub_filter_attached_to_fastmcp_parent_and_handlers() -> None:
