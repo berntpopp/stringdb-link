@@ -33,7 +33,8 @@ async def get_functional_enrichment(
     service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
 ) -> EnrichmentTermListResponse:
-    """Perform functional enrichment analysis."""
+    """Compute functional enrichment of a protein set; returns enriched GO, KEGG, Reactome and other
+    STRING terms (category, term, description, p_value, fdr), most significant first."""
     try:
         logger.debug(
             "Received functional enrichment request",
@@ -96,7 +97,8 @@ async def get_ppi_enrichment(
     service: StringDBService = StringDBServiceDep,
     logger: FilteringBoundLogger = LoggerDep,
 ) -> PPIEnrichmentResult:
-    """Perform protein-protein interaction enrichment analysis."""
+    """Compute protein-protein interaction enrichment of a protein set; returns number_of_edges vs
+    expected_number_of_edges and the p_value that the set has more interactions than chance."""
     try:
         logger.info("Performing PPI enrichment analysis", identifiers=request.identifiers)
 
