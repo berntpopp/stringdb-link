@@ -106,8 +106,9 @@ async def get_network_interactions(
     tags=["network"],
     description=(
         "Use this to list the top interaction partners (neighbourhood) of each protein, "
-        "capped at limit per protein. Not a pair test: absence from a capped list is not "
-        "evidence of no interaction; use search_protein_interactions for that."
+        "capped at limit per protein; returns preferredName_B, stringId_B and combined score "
+        "per partner, plus total_count and truncated. Not a pair test: absence from a "
+        "capped list is not evidence of no interaction; use search_protein_interactions for that."
     ),
 )
 async def get_interaction_partners(
