@@ -15,6 +15,7 @@ from pydantic import ValidationError as PydanticValidationError
 from stringdb_link.config import settings
 from stringdb_link.exceptions import StringDBServiceError, ValidationError
 from stringdb_link.logging_config import get_logger
+from stringdb_link.models.resolution import resolve_symbols
 from stringdb_link.models.responses import (
     EnrichmentTerm,
     EnrichmentTermListResponse,
@@ -29,7 +30,7 @@ from stringdb_link.models.responses import (
     StringIdMapping,
     StringIdMappingListResponse,
 )
-from stringdb_link.models.stringdb import OutputFormat
+from stringdb_link.models.stringdb import MAX_PARTNER_LIMIT, OutputFormat
 from stringdb_link.utils.caching import cache_manager
 
 if TYPE_CHECKING:
@@ -268,6 +269,11 @@ class StringDBService:
             return NetworkInteractionListResponse(
                 interactions=interactions,
                 total_count=len(interactions),
+                resolved_from=resolve_symbols(
+                    request.identifiers,
+                    [(i.string_id_a, i.preferred_name_a) for i in interactions]
+                    + [(i.string_id_b, i.preferred_name_b) for i in interactions],
+                ),
             )
 
         except Exception as e:
@@ -342,7 +348,8 @@ class StringDBService:
                 required_score=round(request.required_score * 1000),
                 network_type=request.network_type.value,
             )
-            limited = _limit_partners_per_protein(all_partners, request.limit)
+            limit = min(request.limit, MAX_PARTNER_LIMIT)
+            limited = _limit_partners_per_protein(all_partners, limit)
             total = len(all_partners)
 
             self.logger.info(
@@ -356,6 +363,10 @@ class StringDBService:
                 partners=limited,
                 total_count=total,
                 truncated=total > len(limited),
+                resolved_from=resolve_symbols(
+                    request.identifiers, [(p.string_id_a, p.preferred_name_a) for p in all_partners]
+                ),
+                limit_clamped_to=limit if limit < request.limit else None,
             )
 
         except Exception as e:

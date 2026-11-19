@@ -11,6 +11,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from stringdb_link.models.coercions import GeneNameList
+from stringdb_link.models.resolution import ResolvedFrom
 
 
 class BaseResponse(BaseModel):
@@ -615,6 +616,9 @@ class NetworkInteractionListResponse(BaseResponse):
         ge=0,
         description="Total number of interactions",
     )
+    resolved_from: list[ResolvedFrom] | None = Field(
+        None, description="Symbols STRING mapped to a STRING id (omitted when none)"
+    )
 
 
 class InteractionPartnerListResponse(BaseResponse):
@@ -632,6 +636,12 @@ class InteractionPartnerListResponse(BaseResponse):
     truncated: bool = Field(
         False,
         description="True when more partners exist than were returned under the requested limit",
+    )
+    resolved_from: list[ResolvedFrom] | None = Field(
+        None, description="Symbols STRING mapped to a STRING id (omitted when none)"
+    )
+    limit_clamped_to: int | None = Field(
+        None, description="Set when the requested limit exceeded the maximum and was clamped"
     )
 
 

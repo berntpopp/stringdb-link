@@ -191,8 +191,8 @@ class TestRequestModelValidation:
         with pytest.raises(ValidationError):
             InteractionPartnersRequest(identifiers=["test"], limit=0)
 
-        with pytest.raises(ValidationError):
-            InteractionPartnersRequest(identifiers=["test"], limit=10001)
+        # Over-max limits are accepted and clamped by the service (limit_clamped_to).
+        InteractionPartnersRequest(identifiers=["test"], limit=10001)
 
     def test_max_identifiers_validation(self):
         """Test maximum identifiers validation."""

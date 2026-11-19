@@ -285,8 +285,9 @@ def build_success_envelope(
                 items, text_field=fence_fields[0], record_id_field=fence_fields[1]
             )
         envelope["results"] = items
-        # Remaining domain keys (e.g. total_count) ride beside `results`.
-        envelope.update(working)
+        # Remaining domain keys (e.g. total_count) ride beside `results`; optional
+        # notes (resolved_from, limit_clamped_to) are omitted when unset.
+        envelope.update({k: v for k, v in working.items() if v is not None})
     else:
         envelope["result"] = working
 

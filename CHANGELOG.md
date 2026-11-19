@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.4.0] - 2026-11-19
+
+### Added
+
+- `search_protein_interactions` and `get_interaction_partners` echo `resolved_from`
+  (`{input, form: "symbol", resolved_to}`) for each gene symbol STRING mapped to a STRING id,
+  proven by the response itself (one STRING id with that preferred name; no extra upstream call,
+  no guess). The `identifiers` description states symbols are accepted directly
+  (genefoundry-router#319).
+- `get_interaction_partners`: a `limit` above 500 is clamped to 500 and reported as
+  `limit_clamped_to: 500` instead of being rejected; the advertised schema no longer declares
+  `maximum: 500`.
+
 ## [4.3.1] - 2026-11-19
 
 - Tool descriptions lead with what each tool returns (D1, Tool-Schema Documentation v1.1).
