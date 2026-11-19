@@ -5,7 +5,6 @@ from __future__ import annotations
 import time
 from typing import TYPE_CHECKING, Any
 
-import httpx
 from fastapi import APIRouter
 
 from stringdb_link import __version__
@@ -24,6 +23,11 @@ router = APIRouter(prefix="/api", tags=["health"])
 # Track server start time for uptime calculation
 _start_time = time.time()
 
+# The container healthcheck polls /api/health every ~20 s; probing STRING on each
+# poll flooded the log and turned upstream 5xx into ASGI 500s (#127). Cache it.
+UPSTREAM_PROBE_TTL_SECONDS = 300.0
+_upstream_probe: tuple[float, str] | None = None  # (checked_at monotonic, status)
+
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check(
@@ -31,20 +35,30 @@ async def health_check(
     logger: FilteringBoundLogger = LoggerDep,
 ) -> HealthResponse:
     """Health check for the StringDB-Link service."""
-    # Check StringDB API health
-    stringdb_status = "available"
-    overall_status = "healthy"
-    try:
-        await client.get_version()
-    except (TimeoutError, httpx.HTTPError) as e:
-        logger.warning("StringDB API health check failed", error=str(e))
-        stringdb_status = "unavailable"
-        overall_status = "degraded"
+    global _upstream_probe
+    now = time.monotonic()
+    if _upstream_probe is None or now - _upstream_probe[0] >= UPSTREAM_PROBE_TTL_SECONDS:
+        error_type = None
+        try:
+            await client.get_version()
+            stringdb_status = "available"
+        except Exception as e:  # any upstream failure degrades, never raises
+            stringdb_status = "unavailable"
+            error_type = type(e).__name__
+        previous = _upstream_probe[1] if _upstream_probe else None
+        _upstream_probe = (now, stringdb_status)
+        if stringdb_status != previous:  # log on state change only
+            if stringdb_status == "available":
+                logger.info("StringDB API reachable")
+            else:
+                logger.warning("StringDB API health check failed", error_type=error_type)
+    stringdb_status = _upstream_probe[1]
+    overall_status = "healthy" if stringdb_status == "available" else "degraded"
 
     uptime = time.time() - _start_time
     cache_status = "enabled" if settings.cache_enabled else "disabled"
 
-    logger.info(
+    logger.debug(
         "Health check completed",
         overall_status=overall_status,
         stringdb_status=stringdb_status,
