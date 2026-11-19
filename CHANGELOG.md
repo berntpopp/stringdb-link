@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.4.1] - 2026-11-19
+
+### Fixed
+
+- `/api/health` no longer probes STRING on every container healthcheck poll: the
+  upstream `/version` probe is cached for 5 minutes, so a 20 s healthcheck stops
+  flooding the log (#127).
+- An upstream STRING error (e.g. 503, raised as `StringDBAPIError`) now reports
+  `status: degraded` / `stringdb_api: unavailable` instead of raising an ASGI 500.
+- The upstream probe logs only on state change; the per-poll "Health check
+  completed" line is DEBUG. `/health` (liveness) never calls upstream.
+
 ## [4.4.0] - 2026-11-19
 
 ### Added
