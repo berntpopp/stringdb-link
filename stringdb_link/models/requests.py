@@ -20,6 +20,11 @@ from .stringdb import (
     NetworkType,
 )
 
+_IDENTIFIERS_DESC = (
+    "Gene symbols (e.g. MAP3K1), UniProt accessions or STRING ids; STRING maps them "
+    "natively, so no prior identifier conversion is needed"
+)
+
 
 class BaseRequest(BaseModel):
     """Base request model with common fields."""
@@ -83,7 +88,7 @@ class NetworkRequest(BaseRequest):
         ...,
         min_length=1,
         max_length=MAX_IDENTIFIERS_PER_REQUEST,
-        description="List of protein identifiers",
+        description=_IDENTIFIERS_DESC,
         examples=[["TP53", "EGFR", "CDK2"]],
     )
     species: int | None = Field(
@@ -143,7 +148,7 @@ class InteractionPartnersRequest(BaseRequest):
         ...,
         min_length=1,
         max_length=MAX_IDENTIFIERS_PER_REQUEST,
-        description="List of protein identifiers",
+        description=_IDENTIFIERS_DESC,
         examples=[["TP53", "CDK2"]],
     )
     species: int | None = Field(
@@ -155,8 +160,7 @@ class InteractionPartnersRequest(BaseRequest):
     limit: int = Field(
         10,
         ge=1,
-        le=500,
-        description="Maximum number of interaction partners per protein",
+        description="Max partners per protein; values above 500 are clamped (limit_clamped_to)",
     )
     required_score: float = Field(
         ConfidenceScore.MEDIUM,

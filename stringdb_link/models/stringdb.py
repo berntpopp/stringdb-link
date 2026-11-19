@@ -132,6 +132,7 @@ ENSEMBL_GENE_ID_PATTERN: Final[str] = r"^ENSG\d{11}$"
 DEFAULT_INTERACTION_LIMIT: Final[int] = 10
 MAX_IDENTIFIERS_PER_REQUEST: Final[int] = 100
 MAX_ADDITIONAL_NODES: Final[int] = 50
+MAX_PARTNER_LIMIT: Final[int] = 500  # per protein; larger requests are clamped
 
 # Score ranges (normalized 0.0-1.0)
 MIN_CONFIDENCE_SCORE: Final[float] = 0.0
