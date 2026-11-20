@@ -30,7 +30,7 @@ from stringdb_link.models.responses import (
     StringIdMapping,
     StringIdMappingListResponse,
 )
-from stringdb_link.models.stringdb import MAX_PARTNER_LIMIT, OutputFormat
+from stringdb_link.models.stringdb import MAX_PARTNER_LIMIT, PARTNER_FETCH_LIMIT, OutputFormat
 from stringdb_link.utils.caching import cache_manager
 
 if TYPE_CHECKING:
@@ -336,15 +336,13 @@ class StringDBService:
                 network_type=request.network_type,
             )
 
-            # STRING's ``limit`` is PER PROTEIN. Fetch the FULL partner set (no upstream
-            # limit) so ``total_count`` is the true count, invariant of the caller's
-            # ``limit``; then apply ``limit`` PER QUERY PROTEIN so every queried protein
-            # is represented (a global head-slice would return only the first protein's
-            # partners and omit every later protein entirely).
+            # STRING's ``limit`` is PER PROTEIN. Fetch the FULL partner set (an explicit
+            # high limit: STRING's default is 10) so ``total_count`` is true; then apply
+            # ``limit`` PER QUERY PROTEIN so every queried protein is represented.
             all_partners = await self._cached_get_interaction_partners(
                 identifiers=tuple(request.identifiers),
                 species=request.species,
-                limit=None,
+                limit=PARTNER_FETCH_LIMIT,
                 required_score=round(request.required_score * 1000),
                 network_type=request.network_type.value,
             )

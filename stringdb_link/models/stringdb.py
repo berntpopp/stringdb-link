@@ -133,6 +133,9 @@ DEFAULT_INTERACTION_LIMIT: Final[int] = 10
 MAX_IDENTIFIERS_PER_REQUEST: Final[int] = 100
 MAX_ADDITIONAL_NODES: Final[int] = 50
 MAX_PARTNER_LIMIT: Final[int] = 500  # per protein; larger requests are clamped
+# Sent upstream so STRING returns a protein's whole partner set: with no limit STRING
+# returns only 10 partners for a single identifier, which made total_count a lie.
+PARTNER_FETCH_LIMIT: Final[int] = 100_000  # above any proteome size
 
 # Score ranges (normalized 0.0-1.0)
 MIN_CONFIDENCE_SCORE: Final[float] = 0.0

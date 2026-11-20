@@ -61,6 +61,7 @@ spec forbids the combination and browsers reject it, so it can only ever be a fo
 | `STRINGDB_API__TIMEOUT` | `30` | Seconds. |
 | `STRINGDB_API__MAX_RETRIES` | `3` | Retries use exponential backoff. |
 | `STRINGDB_API__RETRY_DELAY` | `1.0` | Base backoff delay, seconds. |
+| `STRINGDB_API__IDENTIFIER_MAPPING_TIMEOUT` | `5.0` | Seconds an MCP tool waits for the per-input `mapped` / `unmapped` lookup, which runs beside the main call; after that the answer goes out with an "unavailable" note. |
 | `STRINGDB_API__CALLER_IDENTITY` | `StringDB-Link/0.1.0` | Sent to STRING on every call, as STRING requests. |
 | `STRINGDB_API__USER_AGENT` | `StringDB-Link/0.1.0` | `User-Agent` header on every STRING call. |
 | `STRINGDB_API__REDIRECT_BASE_URL` | `https://string-db.org` | The only STRING origin redirects are allowed to target. |

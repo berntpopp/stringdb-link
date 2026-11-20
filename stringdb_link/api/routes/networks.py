@@ -107,7 +107,9 @@ async def get_network_interactions(
     description=(
         "Use this to list the top interaction partners (neighbourhood) of each protein, "
         "capped at limit per protein; returns preferredName_B, stringId_B and combined score "
-        "per partner, plus total_count and truncated. Not a pair test: absence from a "
+        "per partner, plus total_count and truncated. To test a gene list for enriched "
+        "functions or interactions, call compute_functional_enrichment or "
+        "compute_ppi_enrichment once instead of calling this tool per gene. Not a pair test: absence from a "
         "capped list is not evidence of no interaction; use search_protein_interactions for that."
     ),
 )

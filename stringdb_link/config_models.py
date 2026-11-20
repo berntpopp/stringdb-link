@@ -50,6 +50,12 @@ class StringDBAPIConfigModel(BaseModel):
         default="StringDB-Link/0.1.0",
         description="User agent string for API requests",
     )
+    identifier_mapping_timeout: float = Field(
+        default=5.0,
+        ge=0.1,
+        le=60.0,
+        description="Seconds the MCP tools wait for the per-input identifier mapping",
+    )
     caller_identity: str = Field(
         default="StringDB-Link/0.1.0",
         description="Caller identity string for identifying the client to STRING API",
