@@ -55,7 +55,7 @@ dependencies = [
   "typer>=0.27.2,<1.0.0",
   "rich>=15.0.0,<16.0.0",
   "python-multipart>=0.0.32",
-  "gunicorn>=26.2.0,<27.0.0",
+  "gunicorn>=26.2.0,<28.0.0",
   "asgi-correlation-id>=5.0.1,<6.0.0",
   "prometheus-client>=0.26.0,<1.0.0",
 ]
