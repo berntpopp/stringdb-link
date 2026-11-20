@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -235,8 +235,5 @@ def _offline_identifier_mapping(request: pytest.FixtureRequest) -> Generator[Non
     if request.node.get_closest_marker("real_identifier_mapping"):
         yield
         return
-    with patch(
-        "stringdb_link.mcp.identifier_mapping.mapping_for_arguments",
-        AsyncMock(return_value=None),
-    ):
+    with patch("stringdb_link.mcp.identifier_mapping.start", MagicMock(return_value=None)):
         yield

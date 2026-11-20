@@ -126,6 +126,13 @@ def _build_error_envelope_from_exception(
     )
 
 
+_RESOLVER_TOOL = "resolve_protein_identifiers"
+
+
+def _elapsed_ms(start: float) -> float:
+    return round((time.perf_counter() - start) * 1000, 3)
+
+
 def _none_mapped_envelope(error: dict[str, Any], mapping: dict[str, Any]) -> dict[str, Any]:
     """Turn "STRING read none of the identifiers" into an actionable ``not_found``.
 
@@ -180,39 +187,47 @@ def wrap_structured_error_tools(route: Any, component: Any) -> None:
 
     async def run_with_structured_errors(arguments: dict[str, Any]) -> ToolResult:
         start = time.perf_counter()
+        # Which inputs STRING mapped (router #343): asked BESIDE the main call, never
+        # after it. The resolve tool already returns the mapper's rows for the full
+        # list, so its lookup starts from those once the call is back.
+        is_resolver = tool_name == _RESOLVER_TOOL
+        task = None if is_resolver else identifier_mapping.start(arguments)
         try:
             result = await original_run(arguments)
         except Exception as exc:  # all failures become the flat error frame
-            elapsed_ms = (time.perf_counter() - start) * 1000
-            error_envelope = _build_error_envelope_from_exception(tool_name, exc, elapsed_ms)
+            error_envelope = _build_error_envelope_from_exception(tool_name, exc, 0.0)
             if error_envelope["error_code"] in ("internal", "not_found"):
                 # STRING fails the whole call when it can read none of the inputs.
-                mapping = await identifier_mapping.mapping_for_arguments(arguments)
+                mapping = await identifier_mapping.finish(task, after_error=True)
                 if mapping and mapping.get("unmapped") and not mapping.get("mapped"):
                     error_envelope = _none_mapped_envelope(error_envelope, mapping)
+            # Any other failure (upstream down, rate limited, bad input) never waits.
+            identifier_mapping.discard(task)
+            # Taken after the bounded wait, so it is the time the caller really waited.
+            error_envelope["_meta"]["elapsed_ms"] = _elapsed_ms(start)
             # is_error=True gives the wire-level MCP ``isError`` bit alongside the
             # structured envelope (Response-Envelope Standard v1). Verified against
             # fastmcp 3.4.4: the RETURN path keeps structuredContent (only ``raise``
             # would drop it). Without this a client branching on ``isError`` sees a
             # failed call as a success.
             return ToolResult(structured_content=error_envelope, is_error=True)
+        except BaseException:  # the call itself was cancelled: drop the lookup too
+            identifier_mapping.discard(task)
+            raise
 
-        elapsed_ms = (time.perf_counter() - start) * 1000
         raw = result.structured_content if isinstance(result.structured_content, dict) else {}
-        final = finalize_tool_result(
+        if is_resolver and not envelope.is_error_payload(raw):
+            rows = raw.get("mappings")
+            task = identifier_mapping.start(arguments, rows if isinstance(rows, list) else None)
+        mapping = await identifier_mapping.finish(task)
+        return finalize_tool_result(
             tool_name,
             raw,
             request_id=envelope.new_request_id(),
-            elapsed_ms=elapsed_ms,
+            elapsed_ms=_elapsed_ms(start),
             arguments=arguments,
+            mapping=mapping,
         )
-        frame = final.structured_content or {}
-        if frame.get("success") is True:
-            # Per-input outcome for every tool taking ``identifiers`` (router #343),
-            # placed beside results/result and ahead of ``_meta``.
-            mapping = await identifier_mapping.mapping_for_arguments(arguments) or {}
-            frame.update({**mapping, "_meta": frame.pop("_meta")})
-        return final
 
     object.__setattr__(component, "run", run_with_structured_errors)
 
@@ -224,8 +239,12 @@ def finalize_tool_result(
     request_id: str,
     elapsed_ms: float,
     arguments: dict[str, Any] | None = None,
+    mapping: dict[str, Any] | None = None,
 ) -> ToolResult:
     """Shape a tool's SUCCESSFULLY-RETURNED payload into the final ToolResult.
+
+    ``mapping`` (which inputs STRING mapped) is merged into the success frame BEFORE
+    the ``ToolResult`` is built, so the model-visible text block carries it too.
 
     A payload that is already an error frame (``success: false``) is surfaced as an
     error WITH the wire-level ``isError`` bit set — never re-wrapped as a success.
@@ -242,4 +261,6 @@ def finalize_tool_result(
     success_envelope = envelope.build_success_envelope(
         tool_name, raw, request_id=request_id, elapsed_ms=elapsed_ms, arguments=arguments
     )
+    if mapping:  # beside results/result, ahead of ``_meta``
+        success_envelope.update({**mapping, "_meta": success_envelope.pop("_meta")})
     return ToolResult(structured_content=success_envelope)

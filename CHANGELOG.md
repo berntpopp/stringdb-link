@@ -14,9 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every MCP tool that takes `identifiers` now reports each input: `mapped`
   (`input`, `string_id`, `preferred_name`) and `unmapped` (`input`, `reason`), from
   STRING's own identifier mapper for the same inputs and species. An input STRING
-  cannot read is no longer dropped without a word (genefoundry-router #343). This
-  costs one extra `get_string_ids` call per tool call, more when several inputs name
-  one protein (at most 4).
+  cannot read is no longer dropped without a word (genefoundry-router #343). The
+  block is in both the structured result and the text block.
+- The lookup runs beside the main call, not after it, and waits at most
+  `STRINGDB_API__IDENTIFIER_MAPPING_TIMEOUT` (default 5 s; 1 s after a failed main
+  call); a late or failed lookup yields `identifier_mapping: unavailable…` and the
+  tool still answers. It is cached per (inputs, species) for `CACHE__IDENTIFIER_TTL`
+  and uses one shared client, so STRING's rate limit holds across tool calls. A cache
+  miss costs one `get_string_ids` call, more when several inputs name one protein
+  (at most 4; beyond that an input is reported as "not determined within 4 lookups").
+  When no species is given, the species STRING chose for the full list is used for
+  the follow-up lookups. Echoed inputs are sanitised and capped at 64 characters.
 - `resolve_protein_identifiers` states that STRING returns one row per protein, so
   an Ensembl gene id, HGNC id and NCBI Gene id of one gene share a row; `mapped`
   lists all three.
