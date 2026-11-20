@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `get_interaction_partners` names `compute_functional_enrichment` and
   `compute_ppi_enrichment` for gene-list questions.
 
+### Fixed
+
+- `get_interaction_partners` for a single identifier reported `total_count: 10` and
+  `truncated: false` whatever the real count: with no upstream limit STRING returns
+  only 10 partners for one identifier. An explicit high limit is now sent, so the
+  count and `truncated` are true (KRAS: 985) and `limit` above 10 returns more rows.
+
 ### Changed
 
 - A call in which STRING can read none of the identifiers returns `not_found` with

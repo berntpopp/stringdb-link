@@ -123,8 +123,10 @@ async def test_interaction_partners_paginate_per_protein() -> None:
     request = InteractionPartnersRequest(identifiers=["TP53", "MDM2"], species=9606, limit=2)
     resp = await svc.get_interaction_partners(request)
 
-    # The full set was fetched (limit omitted upstream), not a hardcoded page.
-    assert client.get_interaction_partners.await_args.kwargs["limit"] is None
+    # The full set was fetched, not a hardcoded page.
+    # An explicit high limit, never None: STRING's own default is only 10 partners for
+    # a single identifier, which made total_count/truncated false.
+    assert client.get_interaction_partners.await_args.kwargs["limit"] == 100_000
     # True, limit-invariant total.
     assert resp.total_count == 5
     assert resp.truncated is True
