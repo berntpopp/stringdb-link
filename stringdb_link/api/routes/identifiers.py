@@ -40,6 +40,11 @@ router = APIRouter()
     - RefSeq IDs (e.g., NP_000537)
     - Common protein names
 
+    **One row per protein:** STRING returns a single row when several inputs name the
+    same protein (an Ensembl gene id, an HGNC id and an NCBI Gene id of one gene). The
+    MCP response lists every input under `mapped` or `unmapped`, as all tools taking
+    `identifiers` do.
+
     **Species support:**
     - Humans (9606), Mouse (10090), E. coli (511145), and 2000+ other species
     - If no species is specified, STRING attempts cross-species mapping

@@ -20,7 +20,7 @@ import httpx2
 from fastmcp.server.providers.openapi import OpenAPITool
 from fastmcp.tools.base import ToolResult
 
-from stringdb_link.mcp import envelope
+from stringdb_link.mcp import envelope, identifier_mapping
 from stringdb_link.mcp.annotations import READ_ONLY_OPEN_WORLD
 
 _GENERIC_INTERNAL_MESSAGE = "An internal error occurred while processing the request."
@@ -126,6 +126,30 @@ def _build_error_envelope_from_exception(
     )
 
 
+def _none_mapped_envelope(error: dict[str, Any], mapping: dict[str, Any]) -> dict[str, Any]:
+    """Turn "STRING read none of the identifiers" into an actionable ``not_found``.
+
+    No converter call is offered: an input STRING cannot read may be a typo, another
+    species or another namespace, and none of the fleet's converters covers all three.
+    """
+    return {
+        **error,
+        "error_code": "not_found",
+        "message": "STRING's identifier mapping found no protein for any of the identifiers.",
+        "retryable": False,
+        "recovery_action": "Check the identifiers and the species; see unmapped.",
+        "field": "identifiers",
+        "allowed_values": [
+            "gene symbol, e.g. KRAS",
+            "UniProt accession, e.g. P01116",
+            "STRING id, e.g. 9606.ENSP00000256078",
+        ],
+        "hint": "Pass a gene symbol, UniProt accession or STRING id, with the right species.",
+        "unmapped": mapping["unmapped"],
+        "_meta": error["_meta"],
+    }
+
+
 def wrap_structured_error_tools(route: Any, component: Any) -> None:
     """Wrap a generated OpenAPI tool so every result is a Response-Envelope
     Standard v1 frame, and attach uniform read-only annotations.
@@ -161,6 +185,11 @@ def wrap_structured_error_tools(route: Any, component: Any) -> None:
         except Exception as exc:  # all failures become the flat error frame
             elapsed_ms = (time.perf_counter() - start) * 1000
             error_envelope = _build_error_envelope_from_exception(tool_name, exc, elapsed_ms)
+            if error_envelope["error_code"] in ("internal", "not_found"):
+                # STRING fails the whole call when it can read none of the inputs.
+                mapping = await identifier_mapping.mapping_for_arguments(arguments)
+                if mapping and mapping.get("unmapped") and not mapping.get("mapped"):
+                    error_envelope = _none_mapped_envelope(error_envelope, mapping)
             # is_error=True gives the wire-level MCP ``isError`` bit alongside the
             # structured envelope (Response-Envelope Standard v1). Verified against
             # fastmcp 3.4.4: the RETURN path keeps structuredContent (only ``raise``
@@ -170,13 +199,20 @@ def wrap_structured_error_tools(route: Any, component: Any) -> None:
 
         elapsed_ms = (time.perf_counter() - start) * 1000
         raw = result.structured_content if isinstance(result.structured_content, dict) else {}
-        return finalize_tool_result(
+        final = finalize_tool_result(
             tool_name,
             raw,
             request_id=envelope.new_request_id(),
             elapsed_ms=elapsed_ms,
             arguments=arguments,
         )
+        frame = final.structured_content or {}
+        if frame.get("success") is True:
+            # Per-input outcome for every tool taking ``identifiers`` (router #343),
+            # placed beside results/result and ahead of ``_meta``.
+            mapping = await identifier_mapping.mapping_for_arguments(arguments) or {}
+            frame.update({**mapping, "_meta": frame.pop("_meta")})
+        return final
 
     object.__setattr__(component, "run", run_with_structured_errors)
 

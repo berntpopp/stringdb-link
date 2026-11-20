@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "stringdb-link"
-version = "4.4.1"
+version = "4.5.0"
 description = "High-performance unified API server for STRING protein-protein interaction database with MCP integration"
 readme = "README.md"
 license = { text = "MIT" }
@@ -175,6 +175,7 @@ markers = [
   "unit: marks tests as unit tests",
   "api: marks tests that require API access",
   "mcp: marks tests that test MCP functionality",
+  "real_identifier_mapping: runs the MCP per-input mapping lookup (get_string_ids must be patched)",
 ]
 filterwarnings = [
   "error",

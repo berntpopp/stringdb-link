@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.5.0] - 2026-11-20
+
+### Added
+
+- Every MCP tool that takes `identifiers` now reports each input: `mapped`
+  (`input`, `string_id`, `preferred_name`) and `unmapped` (`input`, `reason`), from
+  STRING's own identifier mapper for the same inputs and species. An input STRING
+  cannot read is no longer dropped without a word (genefoundry-router #343). This
+  costs one extra `get_string_ids` call per tool call, more when several inputs name
+  one protein (at most 4).
+- `resolve_protein_identifiers` states that STRING returns one row per protein, so
+  an Ensembl gene id, HGNC id and NCBI Gene id of one gene share a row; `mapped`
+  lists all three.
+- `get_interaction_partners` names `compute_functional_enrichment` and
+  `compute_ppi_enrichment` for gene-list questions.
+
+### Changed
+
+- A call in which STRING can read none of the identifiers returns `not_found` with
+  `field: identifiers`, `allowed_values` and `unmapped` (was `internal`).
+
 ## [4.4.1] - 2026-11-19
 
 ### Fixed

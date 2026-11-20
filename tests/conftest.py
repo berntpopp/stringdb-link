@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import pytest_asyncio
@@ -223,3 +223,20 @@ def sample_network_response() -> list[dict]:
             "tscore": 0.850,
         },
     ]
+
+
+@pytest.fixture(autouse=True)
+def _offline_identifier_mapping(request: pytest.FixtureRequest) -> Generator[None]:
+    """Keep the MCP wrapper's per-input mapping lookup off the network in every test.
+
+    Tests of the mapping itself opt out with ``@pytest.mark.real_identifier_mapping``
+    and patch ``StringDBClient.get_string_ids`` instead.
+    """
+    if request.node.get_closest_marker("real_identifier_mapping"):
+        yield
+        return
+    with patch(
+        "stringdb_link.mcp.identifier_mapping.mapping_for_arguments",
+        AsyncMock(return_value=None),
+    ):
+        yield
