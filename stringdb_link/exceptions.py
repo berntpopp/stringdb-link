@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import ValidationError as PydanticValidationError
+
 
 class StringDBLinkError(Exception):
     """Base exception class for StringDB-Link errors."""
@@ -345,7 +347,8 @@ class StringDBServiceError(StringDBLinkError):
             message: Error message
             operation: Service operation that failed
             original_error: Original exception that caused this error
-            status_code: HTTP status code override (defaults to 500)
+            status_code: HTTP status code override (defaults to the status
+                ``original_error`` implies, else 500)
         """
         details: dict[str, Any] = {}
         if operation:
@@ -354,6 +357,25 @@ class StringDBServiceError(StringDBLinkError):
             details["original_error"] = str(original_error)
             details["error_type"] = type(original_error).__name__
 
-        super().__init__(message, status_code or 500, details)
+        status = status_code or (fault_status(original_error) if original_error else 500)
+        super().__init__(message, status, details)
         self.operation = operation
         self.original_error = original_error
+
+
+def fault_status(error: Exception) -> int:
+    """HTTP status a service-layer fault surfaces as, keeping its upstream class (#130).
+
+    An upstream STRING fault is 502/504 (retryable ``upstream_unavailable``) or 429;
+    a STRING 400 means the caller's input was rejected. 500 is a local bug only.
+    """
+    if isinstance(error, StringDBRateLimitError):
+        return 429
+    if isinstance(error, StringDBTimeoutError):
+        return 504
+    if isinstance(error, StringDBAPIError):
+        return 400 if error.status_code == 400 else 502
+    if isinstance(error, StringDBLinkError) and error.status_code:
+        return error.status_code
+    # A STRING payload that violates the response schema is upstream drift.
+    return 502 if isinstance(error, PydanticValidationError) else 500
