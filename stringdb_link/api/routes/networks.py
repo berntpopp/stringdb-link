@@ -348,7 +348,7 @@ async def get_network_link(
             "StringDB service error during link generation",
             error_type=type(e).__name__,
         )
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        raise HTTPException(status_code=e.status_code or 502, detail=str(e)) from e
     except Exception as e:
         logger.exception(
             "Unexpected error during link generation",

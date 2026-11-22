@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.5.1] - 2026-11-22
+
+### Fixed
+
+- An upstream STRING failure no longer surfaces as `internal`. Every service
+  method now keeps the class of the error it caught: a STRING 5xx, network error
+  or unparseable payload is 502 and a timeout is 504 (both `upstream_unavailable`,
+  retryable), a rate limit is 429 (`rate_limited`), a STRING 400 is 400. Only a
+  local bug stays 500 (`internal`). `get_network_link` no longer hardcodes 500
+  (#130).
+- The cache wrapper no longer logs a failure of the wrapped STRING call as
+  "Cache error" with a duplicate traceback; that is logged at DEBUG, and
+  "Cache error" is kept for faults of the cache itself (#130).
+
 ## [4.5.0] - 2026-11-20
 
 ### Added

@@ -23,6 +23,17 @@ if TYPE_CHECKING:
 F = TypeVar("F", bound=Callable[..., Any])
 
 
+def _raised_by(error: BaseException, func: Callable[..., Any]) -> bool:
+    """Whether ``error`` was raised inside ``func`` (its frame is in the traceback)."""
+    code = getattr(func, "__code__", None)
+    tb = error.__traceback__
+    while tb is not None:
+        if tb.tb_frame.f_code is code:
+            return True
+        tb = tb.tb_next
+    return False
+
+
 class CacheStats:
     """Statistics for cache performance tracking."""
 
@@ -193,6 +204,15 @@ class CacheManager:
                 except Exception as e:
                     execution_time = time.time() - start_time
                     await stats.record_miss(execution_time)
+                    if _raised_by(e, func):
+                        # The wrapped (upstream) call failed, not the cache: let the
+                        # caller classify and log it; async-lru does not cache it.
+                        self.logger.debug(
+                            "Cached call failed",
+                            cache_name=actual_cache_name,
+                            error_type=type(e).__name__,
+                        )
+                        raise
                     self.logger.exception(
                         "Cache error",
                         cache_name=actual_cache_name,

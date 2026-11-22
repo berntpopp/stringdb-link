@@ -10,8 +10,6 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, cast
 
-from pydantic import ValidationError as PydanticValidationError
-
 from stringdb_link.config import settings
 from stringdb_link.exceptions import StringDBServiceError, ValidationError
 from stringdb_link.logging_config import get_logger
@@ -205,7 +203,7 @@ class StringDBService:
                 identifiers=request.identifiers,
             )
             msg = f"Failed to resolve identifiers: {e}"
-            raise StringDBServiceError(msg) from e
+            raise StringDBServiceError(msg, original_error=e) from e
 
     @cache_manager.cached(
         maxsize=1000,
@@ -283,8 +281,7 @@ class StringDBService:
                 identifiers=request.identifiers,
             )
             msg = f"Failed to get network interactions: {e}"
-            status = 502 if isinstance(e, PydanticValidationError) else None
-            raise StringDBServiceError(msg, original_error=e, status_code=status) from e
+            raise StringDBServiceError(msg, original_error=e) from e
 
     @cache_manager.cached(
         maxsize=500,
@@ -374,7 +371,7 @@ class StringDBService:
                 identifiers=request.identifiers,
             )
             msg = f"Failed to get interaction partners: {e}"
-            raise StringDBServiceError(msg) from e
+            raise StringDBServiceError(msg, original_error=e) from e
 
     @cache_manager.cached(
         maxsize=500,
@@ -465,8 +462,7 @@ class StringDBService:
                 identifiers=request.identifiers,
             )
             msg = f"Failed to get functional enrichment: {e}"
-            status = 502 if isinstance(e, PydanticValidationError) else None
-            raise StringDBServiceError(msg, original_error=e, status_code=status) from e
+            raise StringDBServiceError(msg, original_error=e) from e
 
     @cache_manager.cached(
         maxsize=300,
@@ -542,7 +538,7 @@ class StringDBService:
                 identifiers=request.identifiers,
             )
             msg = f"Failed to get functional annotations: {e}"
-            raise StringDBServiceError(msg) from e
+            raise StringDBServiceError(msg, original_error=e) from e
 
     @cache_manager.cached(
         maxsize=400,
@@ -616,7 +612,7 @@ class StringDBService:
                 identifiers=request.identifiers,
             )
             msg = f"Failed to generate network image: {e}"
-            raise StringDBServiceError(msg) from e
+            raise StringDBServiceError(msg, original_error=e) from e
 
     @cache_manager.cached(
         maxsize=100,
@@ -723,7 +719,7 @@ class StringDBService:
                 species=species,
             )
             msg = f"Failed to get homology scores: {e}"
-            raise StringDBServiceError(msg) from e
+            raise StringDBServiceError(msg, original_error=e) from e
 
     async def get_homology_best_hits(
         self,
@@ -786,7 +782,7 @@ class StringDBService:
                 species_b=species_b,
             )
             msg = f"Failed to get homology best hits: {e}"
-            raise StringDBServiceError(msg) from e
+            raise StringDBServiceError(msg, original_error=e) from e
 
     async def get_ppi_enrichment(self, request: PPIEnrichmentRequest) -> PPIEnrichmentResult:
         """Get protein-protein interaction enrichment analysis.
@@ -840,7 +836,7 @@ class StringDBService:
                 species=request.species,
             )
             msg = f"Failed to get PPI enrichment: {e}"
-            raise StringDBServiceError(msg) from e
+            raise StringDBServiceError(msg, original_error=e) from e
 
     async def get_network_link(self, request: LinkRequest, output_format: str = "json") -> LinkInfo:
         """Get shareable link to STRING webpage for the network.
@@ -908,7 +904,7 @@ class StringDBService:
                 species=request.species,
             )
             msg = f"Failed to get network link: {e}"
-            raise StringDBServiceError(msg) from e
+            raise StringDBServiceError(msg, original_error=e) from e
 
     async def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics for monitoring."""
