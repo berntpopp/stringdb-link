@@ -18,6 +18,7 @@ import logging
 
 import httpx
 import pytest
+import structlog
 
 from stringdb_link.api.client import StringDBClient
 from stringdb_link.api.url_guard import (
@@ -451,3 +452,62 @@ async def test_blocked_host_redirect_never_logs_or_returns_host(
     for record in caplog.records:
         assert blocked not in record.getMessage()
         assert blocked not in str(record.__dict__)
+
+
+# --------------------------------------------------------------------------- #
+# #132: each policy fault logs WHY at WARNING, never the path/query            #
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.asyncio
+async def test_over_cap_logs_reason_and_allowlisted_origin(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("stringdb_link.api.client.MAX_RESPONSE_BYTES", 16)
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b"x" * 4096)
+
+    client = _guarded_client(httpx.MockTransport(handler), VERSIONED_BASE)
+    try:
+        with structlog.testing.capture_logs() as logs, pytest.raises(ResponseTooLargeError):
+            await client._make_request("network", {"identifiers": "TP53"})
+    finally:
+        await client.close()
+
+    faults = [e for e in logs if e["event"] == "outbound_policy_fault"]
+    assert faults == [
+        {
+            "event": "outbound_policy_fault",
+            "log_level": "warning",
+            "reason": "response over byte limit",
+            "scheme": "https",
+            "host": "version-12-5.string-db.org",
+            "port": 443,
+        }
+    ]
+    assert "TP53" not in str(logs)
+
+
+@pytest.mark.asyncio
+async def test_redirect_limit_logs_no_unguarded_host() -> None:
+    """The unsent next hop never passed the guard, so its host is never logged."""
+    blocked = "attacker-controlled.evil.example"
+    hops = iter(range(10))
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        n = next(hops)
+        target = f"https://{blocked}/x" if n >= 5 else f"{VERSIONED_BASE}/json/network?h={n}"
+        return httpx.Response(307, headers={"location": target})
+
+    client = _guarded_client(httpx.MockTransport(handler), VERSIONED_BASE)
+    try:
+        with structlog.testing.capture_logs() as logs, pytest.raises(DisallowedURLError):
+            await client._make_request("network", {"identifiers": "TP53"})
+    finally:
+        await client.close()
+
+    assert {
+        "event": "outbound_policy_fault",
+        "log_level": "warning",
+        "reason": "too many redirects",
+    } in logs
+    assert blocked not in str(logs)

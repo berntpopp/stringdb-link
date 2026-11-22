@@ -26,6 +26,9 @@ from typing import Any
 from urllib.parse import SplitResult, urlsplit
 
 import httpx
+import structlog
+
+logger = structlog.get_logger(__name__)
 
 # Fail-closed successful-response ceiling. Sized ABOVE the 8 MiB untrusted-text
 # fence and STRING's multi-MB network images (spec §4 Recipe B table: 32 MiB).
@@ -115,22 +118,45 @@ def make_url_guard(
         # allowlisted host. Every rejection raises the same FIXED, host-free
         # message so the blocked value never reaches a log or caller response.
         url = request.url
+        port = url.port if url.port is not None else HTTPS_DEFAULT_PORT
         if url.scheme != "https":
-            raise DisallowedURLError(_BLOCKED_URL_MSG)
+            reason = "non-https scheme"
         # Reject ANY syntactic userinfo -- the recipe permits none at all. httpx
         # exposes the raw userinfo as bytes: ``b""`` when absent, else non-empty
         # (``b":"`` for the empty ``:@`` form, ``b"user"``/``b"user:pass"`` etc).
         # This is authoritative and subsumes the username/password fields, which
         # a bare ``:@`` form leaves empty (username == password == "").
-        if url.userinfo:
-            raise DisallowedURLError(_BLOCKED_URL_MSG)
+        elif url.userinfo:
+            reason = "userinfo in URL"
         # httpx normalises a default-port URL to ``port is None``; treat that as
         # 443 and reject any other explicit port.
-        port = url.port if url.port is not None else HTTPS_DEFAULT_PORT
-        if ((url.host or "").lower(), port) not in allowed_hosts:
-            raise DisallowedURLError(_BLOCKED_URL_MSG)
+        elif ((url.host or "").lower(), port) not in allowed_hosts:
+            reason = "host or port not allowlisted"
+        else:
+            return
+        # Reason, scheme and port only: the host is attacker-influenceable (F-17)
+        # and the path/query carry the caller's identifiers.
+        logger.warning("outbound_url_blocked", reason=reason, scheme=url.scheme, port=port)
+        raise DisallowedURLError(_BLOCKED_URL_MSG)
 
     return _guard
+
+
+def log_policy_fault(reason: str, url: httpx.URL) -> None:
+    """WARN why a guard-passed hop was rejected: its host is allowlisted, path never logged."""
+    port = url.port if url.port is not None else HTTPS_DEFAULT_PORT
+    logger.warning(
+        "outbound_policy_fault", reason=reason, scheme=url.scheme, host=url.host, port=port
+    )
+
+
+def redirect_limit_error() -> DisallowedURLError:
+    """Log and build the error for httpx.TooManyRedirects.
+
+    No URL is logged: the unsent next hop's Location never passed the guard (F-17).
+    """
+    logger.warning("outbound_policy_fault", reason="too many redirects")
+    return DisallowedURLError(_BLOCKED_URL_MSG)
 
 
 def check_no_redirect_method_change(response: httpx.Response) -> None:
@@ -146,6 +172,7 @@ def check_no_redirect_method_change(response: httpx.Response) -> None:
         return
     original_method = response.history[0].request.method
     if response.request.method != original_method:
+        log_policy_fault("redirect dropped POST body", response.request.url)
         raise RedirectBodyLossError(_METHOD_CHANGE_MSG)
 
 
@@ -161,6 +188,7 @@ async def read_capped(response: httpx.Response, max_bytes: int) -> bytes:
     async for chunk in response.aiter_bytes():
         total += len(chunk)
         if total > max_bytes:
+            log_policy_fault("response over byte limit", response.request.url)
             raise ResponseTooLargeError(_SIZE_ERROR_MSG)
         chunks.append(chunk)
     return b"".join(chunks)

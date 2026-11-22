@@ -10,6 +10,20 @@ from typing import Any
 
 from pydantic import ValidationError as PydanticValidationError
 
+from stringdb_link.api.url_guard import (
+    DisallowedURLError,
+    RedirectBodyLossError,
+    ResponseTooLargeError,
+)
+
+#: One status per outbound HTTP-policy rejection (#132). The MCP envelope classifies
+#: from the status alone, so each needs its own to carry a reason-specific message.
+POLICY_FAULT_STATUS: dict[type[Exception], int] = {
+    DisallowedURLError: 508,
+    ResponseTooLargeError: 507,
+    RedirectBodyLossError: 510,
+}
+
 
 class StringDBLinkError(Exception):
     """Base exception class for StringDB-Link errors."""
@@ -367,8 +381,11 @@ def fault_status(error: Exception) -> int:
     """HTTP status a service-layer fault surfaces as, keeping its upstream class (#130).
 
     An upstream STRING fault is 502/504 (retryable ``upstream_unavailable``) or 429;
-    a STRING 400 means the caller's input was rejected. 500 is a local bug only.
+    a STRING 400 means the caller's input was rejected. An outbound HTTP-policy
+    rejection gets its own non-retryable status (#132). 500 is a local bug only.
     """
+    if type(error) in POLICY_FAULT_STATUS:
+        return POLICY_FAULT_STATUS[type(error)]
     if isinstance(error, StringDBRateLimitError):
         return 429
     if isinstance(error, StringDBTimeoutError):

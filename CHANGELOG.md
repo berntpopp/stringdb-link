@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.5.2] - 2026-11-22
+
+### Fixed
+
+- The three outbound HTTP-policy rejections no longer surface as 500 `internal`:
+  a blocked URL (off-allowlist redirect hop, non-https scheme, userinfo, or too
+  many redirects) is 508, an oversized response 507, and a redirect that would
+  drop the POST body 510. Over MCP each is `upstream_unavailable` with
+  `error_subtype: upstream_policy`, `retryable: false`, and a fixed message
+  naming the reason. Each rejection logs its reason, scheme and port at WARNING
+  (plus the host once it has passed the allowlist), never the path or query (#132).
+
 ## [4.5.1] - 2026-11-22
 
 ### Fixed

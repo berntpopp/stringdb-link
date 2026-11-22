@@ -13,8 +13,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
+import structlog
 from fastmcp import Client
 
+from stringdb_link.api.url_guard import (
+    DisallowedURLError,
+    RedirectBodyLossError,
+    ResponseTooLargeError,
+    build_host_allowlist,
+    make_url_guard,
+)
 from stringdb_link.exceptions import (
     NetworkError,
     StringDBAPIError,
@@ -81,6 +89,10 @@ _FAULTS: list[tuple[Exception, int]] = [
     (NetworkError("connection refused", original_error=httpx.ConnectError("x")), 502),
     (StringDBRateLimitError(retry_after=5), 429),
     (RuntimeError("local bug"), 500),
+    # Outbound HTTP-policy rejections (#132): each its own status, never 500.
+    (DisallowedURLError("outbound request blocked by HTTP policy"), 508),
+    (ResponseTooLargeError("upstream response exceeds HTTP policy byte limit"), 507),
+    (RedirectBodyLossError("redirect dropped the POST body"), 510),
 ]
 
 
@@ -190,3 +202,52 @@ async def test_mcp_network_link_upstream_fault_is_not_internal(facade: Any) -> N
     body = result.structured_content
     assert body is not None
     assert body["error_code"] == "upstream_unavailable"
+
+
+@pytest.mark.parametrize(
+    ("fault", "reason"),
+    [
+        (DisallowedURLError("x"), "blocked"),
+        (ResponseTooLargeError("x"), "byte limit"),
+        (RedirectBodyLossError("x"), "POST body"),
+    ],
+)
+async def test_mcp_partners_policy_fault_envelope(
+    facade: Any, fault: Exception, reason: str
+) -> None:
+    """An HTTP-policy rejection is a deterministic upstream fault, not ``internal`` (#132)."""
+    with patch(
+        "stringdb_link.api.client.StringDBClient.get_interaction_partners",
+        new_callable=AsyncMock,
+        side_effect=fault,
+    ):
+        async with Client(facade) as client:
+            result = await client.call_tool(
+                "get_interaction_partners",
+                {"identifiers": ["POLICY132"], "species": 9606},
+                raise_on_error=False,
+            )
+
+    body = result.structured_content
+    assert body is not None
+    assert body["error_code"] == "upstream_unavailable"
+    assert body["error_subtype"] == "upstream_policy"
+    assert body["retryable"] is False
+    assert reason in body["message"]
+
+
+async def test_guard_logs_reason_scheme_port_without_host_or_path() -> None:
+    """A blocked hop logs WHY at WARNING; never the host (F-17) nor the path/query."""
+    guard = make_url_guard(build_host_allowlist("https://version-12-5.string-db.org/api"))
+    with structlog.testing.capture_logs() as logs, pytest.raises(DisallowedURLError):
+        await guard(httpx.Request("GET", "http://evil.example:8080/secret?ids=TP53"))
+
+    assert logs == [
+        {
+            "event": "outbound_url_blocked",
+            "log_level": "warning",
+            "reason": "non-https scheme",
+            "scheme": "http",
+            "port": 8080,
+        }
+    ]

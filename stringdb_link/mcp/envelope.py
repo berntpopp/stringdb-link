@@ -141,6 +141,20 @@ _STATUS_CODE_MAP: dict[int, tuple[ErrorCode, bool]] = {
     502: ("upstream_unavailable", True),
     503: ("upstream_unavailable", True),
     504: ("upstream_unavailable", True),
+    # Outbound HTTP-policy rejections (exceptions.POLICY_FAULT_STATUS): deterministic,
+    # an immediate retry hits the same wall.
+    507: ("upstream_unavailable", False),
+    508: ("upstream_unavailable", False),
+    510: ("upstream_unavailable", False),
+}
+
+#: Fixed per-reason messages for the policy statuses (error_subtype ``upstream_policy``).
+_POLICY_MESSAGE: dict[int, str] = {
+    507: "The upstream STRING response exceeded this server's HTTP policy byte limit.",
+    508: "The upstream STRING request was blocked by this server's HTTP policy "
+    "(redirect to a non-allowlisted or non-https URL, or too many redirects).",
+    510: "The upstream STRING API redirected in a way that would drop the POST body; "
+    "blocked by this server's HTTP policy.",
 }
 
 _GENERIC_RECOVERY_ACTION: dict[ErrorCode, str] = {
@@ -176,6 +190,8 @@ def safe_error_message(status_code: int) -> str:
     boundary guarantee that no attacker-influenceable upstream/error-body prose can
     reach an MCP caller through the error ``message``.
     """
+    if status_code in _POLICY_MESSAGE:
+        return _POLICY_MESSAGE[status_code]
     error_code, _ = classify_status(status_code)
     return _SAFE_ERROR_MESSAGE[error_code]
 
@@ -334,6 +350,12 @@ def build_error_envelope(
         "retryable": retryable,
         "recovery_action": _GENERIC_RECOVERY_ACTION[error_code],
     }
+    if status_code in _POLICY_MESSAGE:
+        envelope["error_subtype"] = "upstream_policy"
+        envelope["recovery_action"] = (
+            "Do not retry immediately; the upstream answered outside this server's HTTP "
+            "policy. Try again later or report it."
+        )
     if field_errors:
         cleaned = [sanitize_message(str(name))[:64] for name in field_errors if str(name)]
         if cleaned:
