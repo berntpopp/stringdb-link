@@ -128,6 +128,7 @@ async def test_every_data_tool_result_validates_and_carries_provenance(
     mcp_client, _ = client
     tools = await mcp_client.list_tools()
     assert len(tools) == 10
+    paged: set[str] = set()
     for tool in tools:
         envelope = await _call(mcp_client, tool)
         try:
@@ -136,6 +137,16 @@ async def test_every_data_tool_result_validates_and_carries_provenance(
             raise AssertionError(f"{tool.name}: {exc}") from exc
         assert envelope["_meta"]["source"] == "stringdb"
         assert envelope["_meta"]["data_version"] == "12.5"
+        if "truncated" in envelope:  # the limit-capped tools (v1 section 5)
+            paged.add(tool.name)
+            assert envelope["_meta"]["pagination"] == {
+                "total_count": envelope["total_count"],
+                "has_more": envelope["truncated"],
+                "next_cursor": None,
+            }
+        else:
+            assert "pagination" not in envelope["_meta"]
+    assert paged == {"get_interaction_partners", "compute_functional_enrichment"}
 
 
 async def test_cache_hit_keeps_the_original_retrieved_at(monkeypatch: pytest.MonkeyPatch) -> None:
