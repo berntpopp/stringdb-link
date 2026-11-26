@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.7.0] - 2026-11-26
+
+### Added
+
+- `get_interaction_partners` and `compute_functional_enrichment` report `_meta.pagination`
+  with `total_count`, `has_more` and `next_cursor` (always `null`: STRING has no offset or
+  cursor; raise `limit` for more rows), as Response-Envelope Standard v1 §5 asks. The
+  top-level `total_count` and `truncated` are unchanged.
+
 ## [4.6.1] - 2026-11-26
 
 ### Fixed

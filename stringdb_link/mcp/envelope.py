@@ -313,6 +313,13 @@ def build_success_envelope(
         # Remaining domain keys (e.g. total_count) ride beside `results`; optional
         # notes (resolved_from, limit_clamped_to) are omitted when unset.
         envelope.update({k: v for k, v in working.items() if v is not None})
+        if "truncated" in envelope and "total_count" in envelope:
+            # Response-Envelope v1 section 5. STRING has no offset or cursor: widen `limit`.
+            meta["pagination"] = {
+                "total_count": envelope["total_count"],
+                "has_more": envelope["truncated"],
+                "next_cursor": None,
+            }
     else:
         envelope["result"] = working
 
