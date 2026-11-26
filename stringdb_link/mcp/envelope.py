@@ -35,8 +35,10 @@ from typing import Any, Literal, cast
 
 from stringdb_link.config import settings
 from stringdb_link.mcp.untrusted_content import (
+    DEFAULT_MAX_OBJECTS,
+    DEFAULT_MAX_TEXT_BYTES,
+    DEFAULT_MAX_TOTAL_TEXT_BYTES,
     UntrustedText,
-    enforce_untrusted_text_limits,
     fence_untrusted_text,
     sanitize_message,
 )
@@ -61,12 +63,6 @@ UNTRUSTED_TEXT_FIELDS: dict[str, tuple[str, str]] = {
     "compute_functional_enrichment": ("description", "term"),
     "get_functional_annotations": ("description", "term"),
 }
-
-# STRING enrichment/annotation result lists are the tool's real result cap, not
-# the bare v1.1 default of 128: a large input gene set can legitimately surface
-# many GO/KEGG terms in one call. The 2 MiB/object and 8 MiB/total byte limits
-# stay at their v1.1 defaults — they are the real DoS backstop.
-_UNTRUSTED_TEXT_MAX_OBJECTS = 10_000
 
 
 def _untrusted_text_object_defs() -> dict[str, Any]:
@@ -215,7 +211,10 @@ def _fence_collection_field(
     *,
     text_field: str,
     record_id_field: str,
-) -> None:
+    max_text_bytes: int = DEFAULT_MAX_TEXT_BYTES,
+    max_objects: int = DEFAULT_MAX_OBJECTS,
+    max_total_text_bytes: int = DEFAULT_MAX_TOTAL_TEXT_BYTES,
+) -> bool:
     """Reshape one bare-string prose field into a v1.1 ``untrusted_text`` object.
 
     Mutates ``items`` in place: STRING protein annotations and GO/KEGG
@@ -223,9 +222,15 @@ def _fence_collection_field(
     and must never reach an MCP caller as a bare string. The raw string is
     replaced by the typed object at the same key — no sibling field carries a
     duplicate copy of the raw or sanitized prose.
+
+    GTS-CORE-TXT-03: the v1.1 bounds (objects, bytes per object, bytes in total)
+    are enforced by cutting whole rows from the first row that would breach one,
+    so every returned row stays complete. Returns True when rows were cut; the
+    caller then sets the envelope's ``truncated`` flag.
     """
-    fenced: list[UntrustedText] = []
-    for item in items:
+    count = 0
+    total = 0
+    for index, item in enumerate(items):
         if not isinstance(item, dict):
             continue
         raw = item.get(text_field)
@@ -233,9 +238,14 @@ def _fence_collection_field(
             continue
         record_id = str(item.get(record_id_field, ""))
         obj = fence_untrusted_text(raw, source=SOURCE, record_id=record_id)
-        fenced.append(obj)
+        size = len(obj.text.encode("utf-8"))
+        if count + 1 > max_objects or size > max_text_bytes or total + size > max_total_text_bytes:
+            del items[index:]
+            return True
+        count += 1
+        total += size
         item[text_field] = obj.model_dump(mode="json")
-    enforce_untrusted_text_limits(fenced, max_objects=_UNTRUSTED_TEXT_MAX_OBJECTS)
+    return False
 
 
 def _augment_meta(
@@ -305,14 +315,19 @@ def build_success_envelope(
         source_key = spec.source_key or "results"
         items = working.pop(source_key, [])
         fence_fields = UNTRUSTED_TEXT_FIELDS.get(tool_name)
-        if fence_fields is not None and isinstance(items, list):
-            _fence_collection_field(
+        cut = (
+            fence_fields is not None
+            and isinstance(items, list)
+            and _fence_collection_field(
                 items, text_field=fence_fields[0], record_id_field=fence_fields[1]
             )
+        )
         envelope["results"] = items
         # Remaining domain keys (e.g. total_count) ride beside `results`; optional
         # notes (resolved_from, limit_clamped_to) are omitted when unset.
         envelope.update({k: v for k, v in working.items() if v is not None})
+        if cut:
+            envelope["truncated"] = True
         if "truncated" in envelope and "total_count" in envelope:
             # Response-Envelope v1 section 5. STRING has no offset or cursor: widen `limit`.
             meta["pagination"] = {
