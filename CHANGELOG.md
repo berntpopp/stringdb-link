@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.7.1] - 2026-11-26
+
+### Fixed
+
+- Untrusted text is now bounded per result (GTS-CORE-TXT-03): a fenced tool result carries at most 128 `untrusted_text` objects, 2 MiB per object and 8 MiB in total. A result over a bound is cut at whole rows, so every returned row stays complete, and the envelope then sets `truncated: true` beside the full `total_count` (and `_meta.pagination.has_more`). Previously the object ceiling was raised to 10,000 for enrichment and annotation lists, so `get_functional_annotations` could return hundreds of fenced objects without a truncation flag.
+
 ## [4.7.0] - 2026-11-26
 
 ### Added

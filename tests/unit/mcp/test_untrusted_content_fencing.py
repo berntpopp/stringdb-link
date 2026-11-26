@@ -152,14 +152,8 @@ async def test_get_functional_annotations_description_is_fenced(facade: Any) -> 
 
 
 @pytest.mark.asyncio
-async def test_large_enrichment_result_does_not_raise(facade: Any) -> None:
-    """>128 enrichment terms must not trip the v1.1 default object-count ceiling.
-
-    stringdb's real result cap for enrichment/annotation lists is far above the
-    bare v1.1 default of 128 objects (STRING can legitimately return many
-    GO/KEGG terms for a large input gene set); the fence enforces
-    max_objects=10000 for these tools instead.
-    """
+async def test_large_enrichment_result_is_cut_to_128_whole_rows(facade: Any) -> None:
+    """GTS-CORE-TXT-03: >128 fenced objects are cut to whole rows with a typed flag."""
     terms = [
         EnrichmentTerm(
             category="Process",
@@ -188,8 +182,55 @@ async def test_large_enrichment_result_does_not_raise(facade: Any) -> None:
     body = result.structured_content
     assert body is not None
     assert body["success"] is True
-    assert len(body["results"]) == 200
+    assert len(body["results"]) == 128
+    assert body["results"][-1]["term"] == "GO:0000127"
     assert all(item["description"]["kind"] == "untrusted_text" for item in body["results"])
+    assert body["truncated"] is True
+    assert body["total_count"] == 200
+    assert body["_meta"]["pagination"]["has_more"] is True
+
+
+@pytest.mark.asyncio
+async def test_large_annotation_result_sets_truncated(facade: Any) -> None:
+    """get_functional_annotations has no truncated field of its own; the cut adds it."""
+    annotations = [
+        FunctionalAnnotation(
+            category="Process",
+            term=f"GO:{i:07d}",
+            number_of_genes=1,
+            ratio_in_set=0.5,
+            ncbi_taxon_id=9606,
+            input_genes=["TP53"],
+            preferred_names=["TP53"],
+            description=f"annotation {i}",
+        )
+        for i in range(641)
+    ]
+    with patch(
+        "stringdb_link.services.stringdb_service.StringDBService.get_functional_annotation",
+        new_callable=AsyncMock,
+        return_value=FunctionalAnnotationListResponse(annotations=annotations, total_count=641),
+    ):
+        async with Client(facade) as client:
+            result = await client.call_tool("get_functional_annotations", {"identifiers": ["TP53"]})
+
+    body = result.structured_content
+    assert body is not None
+    assert len(body["results"]) == 128
+    assert body["truncated"] is True
+    assert body["total_count"] == 641
+
+
+def test_byte_ceiling_cuts_whole_rows() -> None:
+    from stringdb_link.mcp.envelope import _fence_collection_field
+
+    items: list[Any] = [{"term": f"T{i}", "description": "x" * 10} for i in range(5)]
+    assert _fence_collection_field(
+        items, text_field="description", record_id_field="term", max_total_text_bytes=25
+    )
+    assert [item["term"] for item in items] == ["T0", "T1"]
+    small: list[Any] = [{"term": "T0", "description": "ok"}]
+    assert not _fence_collection_field(small, text_field="description", record_id_field="term")
 
 
 # The fenced pointer per tool, taken from the router inventory row (independent
