@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.6.0] - 2026-11-26
+
+### Added
+
+- Provenance on every successful result (Response-Envelope Standard v1.2):
+  `_meta.data_version` (the STRING release, read off the version-pinned API host, e.g. `12.5`;
+  `live` when the host is not version-pinned) and `_meta.retrieved_at` (UTC time of the
+  upstream fetch; a cached result keeps the time of the fetch that filled the cache entry).
+- The vendored envelope JSON Schema (genefoundry-envelope v1.2.0) validates every data tool's
+  result in the test suite.
+
 ## [4.5.2] - 2026-11-22
 
 ### Fixed

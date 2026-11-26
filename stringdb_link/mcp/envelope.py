@@ -28,16 +28,19 @@ Response-Envelope Standard v1 requires. (Only the ``raise`` path loses
 
 from __future__ import annotations
 
+import re
 import uuid
 from dataclasses import dataclass
 from typing import Any, Literal, cast
 
+from stringdb_link.config import settings
 from stringdb_link.mcp.untrusted_content import (
     UntrustedText,
     enforce_untrusted_text_limits,
     fence_untrusted_text,
     sanitize_message,
 )
+from stringdb_link.provenance import retrieved_at
 
 # Static provenance stamp bumped when the tool surface / envelope shape changes
 # in a way a warm client should re-fetch metadata for. No capabilities tool
@@ -196,6 +199,12 @@ def safe_error_message(status_code: int) -> str:
     return _SAFE_ERROR_MESSAGE[error_code]
 
 
+def data_version() -> str:
+    """The STRING release served: read off the version-pinned API host, else ``live``."""
+    pinned = re.search(r"version-(\d+)-(\d+)\.", settings.stringdb_api.base_url)
+    return f"{pinned[1]}.{pinned[2]}" if pinned else "live"
+
+
 def new_request_id() -> str:
     """Return a fresh opaque request id for one MCP tool invocation."""
     return uuid.uuid4().hex
@@ -315,6 +324,9 @@ def build_success_envelope(
     envelope["_meta"] = _augment_meta(
         meta, tool_name=tool_name, request_id=request_id, elapsed_ms=elapsed_ms
     )
+    # Provenance (Response-Envelope Standard v1.2), success only.
+    envelope["_meta"]["data_version"] = data_version()
+    envelope["_meta"]["retrieved_at"] = retrieved_at()
     return envelope
 
 

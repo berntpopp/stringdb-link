@@ -22,6 +22,7 @@ from fastmcp.tools.base import ToolResult
 
 from stringdb_link.mcp import envelope, identifier_mapping
 from stringdb_link.mcp.annotations import READ_ONLY_OPEN_WORLD
+from stringdb_link.provenance import begin_fetch_log
 
 _GENERIC_INTERNAL_MESSAGE = "An internal error occurred while processing the request."
 
@@ -187,6 +188,7 @@ def wrap_structured_error_tools(route: Any, component: Any) -> None:
 
     async def run_with_structured_errors(arguments: dict[str, Any]) -> ToolResult:
         start = time.perf_counter()
+        begin_fetch_log()
         # Which inputs STRING mapped (router #343): asked BESIDE the main call, never
         # after it. The resolve tool already returns the mapper's rows for the full
         # list, so its lookup starts from those once the call is back.
