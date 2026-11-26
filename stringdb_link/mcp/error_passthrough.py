@@ -12,6 +12,7 @@ touched: this only reshapes what MCP callers see.
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
@@ -129,6 +130,30 @@ def _build_error_envelope_from_exception(
 
 _RESOLVER_TOOL = "resolve_protein_identifiers"
 
+# An unknown argument NAME is caller-controlled text; it is named back only when it
+# is a plain identifier, so no prose or odd code point rides in the error frame.
+_PLAIN_ARGUMENT_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]{0,63}")
+
+
+def _unknown_argument_envelope(
+    tool_name: str, unknown: list[str], allowed: list[str], elapsed_ms: float
+) -> dict[str, Any]:
+    """``invalid_input`` for an argument the tool does not declare (Behaviour Standard B5/B6)."""
+    error = envelope.build_error_envelope(
+        tool_name,
+        status_code=422,
+        message="The call carries an argument this tool does not declare.",
+        request_id=envelope.new_request_id(),
+        elapsed_ms=elapsed_ms,
+        field_errors=[name for name in unknown if _PLAIN_ARGUMENT_NAME.fullmatch(name)],
+    )
+    meta = error.pop("_meta")
+    error["recovery_action"] = "Remove the unknown argument; use only names in allowed_values."
+    error["allowed_values"] = allowed
+    error["hint"] = "Valid argument names are listed in allowed_values."
+    error["_meta"] = meta
+    return error
+
 
 def _elapsed_ms(start: float) -> float:
     return round((time.perf_counter() - start) * 1000, 3)
@@ -185,9 +210,20 @@ def wrap_structured_error_tools(route: Any, component: Any) -> None:
 
     original_run = component.run
     tool_name = component.name
+    # The OpenAPI provider drops an undeclared argument silently, so a misspelled
+    # optional parameter would change the query without any signal to the caller.
+    declared = sorted((component.parameters or {}).get("properties") or {})
 
     async def run_with_structured_errors(arguments: dict[str, Any]) -> ToolResult:
         start = time.perf_counter()
+        unknown = sorted(set(arguments) - set(declared))
+        if unknown:
+            return ToolResult(
+                structured_content=_unknown_argument_envelope(
+                    tool_name, unknown, declared, _elapsed_ms(start)
+                ),
+                is_error=True,
+            )
         begin_fetch_log()
         # Which inputs STRING mapped (router #343): asked BESIDE the main call, never
         # after it. The resolve tool already returns the mapper's rows for the full

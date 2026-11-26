@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.6.1] - 2026-11-26
+
+### Fixed
+
+- Every tool now rejects an argument it does not declare with an `invalid_input` error
+  (`isError: true`) that lists the valid names in `allowed_values` and names the offending
+  argument in `field`. Before, the argument was dropped silently, so a misspelled optional
+  parameter changed the query without any signal (MCP Behaviour Standard v1, B5 and B6).
+
 ## [4.6.0] - 2026-11-26
 
 ### Added
