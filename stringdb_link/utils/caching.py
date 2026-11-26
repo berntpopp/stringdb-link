@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Callable
+from datetime import UTC, datetime
 from functools import wraps
 from typing import TYPE_CHECKING, Any, TypeVar
 
@@ -16,6 +17,7 @@ from async_lru import alru_cache
 
 from stringdb_link.config import settings
 from stringdb_link.logging_config import get_logger
+from stringdb_link.provenance import note_fetch
 
 if TYPE_CHECKING:
     from structlog.typing import FilteringBoundLogger
@@ -161,8 +163,12 @@ class CacheManager:
             # Use function name as cache name if not provided
             actual_cache_name = cache_name or f"{func.__module__}.{func.__qualname__}"
 
-            # Apply alru_cache
-            cached_func = alru_cache(maxsize=maxsize, ttl=ttl)(func)
+            # The entry keeps the time of the fetch that filled it (Response-Envelope
+            # Standard v1.2: a cache hit reports that time as `_meta.retrieved_at`).
+            async def stamped(*args: Any, **kwargs: Any) -> tuple[Any, datetime]:
+                return await func(*args, **kwargs), datetime.now(UTC)
+
+            cached_func = alru_cache(maxsize=maxsize, ttl=ttl)(stamped)
 
             @wraps(func)
             async def wrapper(*args: Any, **kwargs: Any) -> Any:
@@ -175,7 +181,8 @@ class CacheManager:
                 initial_hits = cache_info.hits
 
                 try:
-                    result = await cached_func(*args, **kwargs)
+                    result, fetched_at = await cached_func(*args, **kwargs)
+                    note_fetch(fetched_at)
                     execution_time = time.time() - start_time
 
                     # Check if we got a cache hit
